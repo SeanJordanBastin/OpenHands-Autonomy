@@ -1,0 +1,13 @@
+task: schedule_nightly_growth_cron
+description: JARVIS schedules her own nightly learning and evolution task via crontab
+steps:
+  - name: Check if crontab already exists
+    shell: crontab -l || touch my_cron
+
+  - name: Add JARVIS nightly job to crontab
+    shell: |
+      CRON_JOB=\"30 2 * * * cd /Users/seanbastin/Downloads/OpenHands-main && poetry run python scripts/agent.py --task-file tasks/jarvis_nightly_autonomous_growth.yaml >> logs/jarvis_nightly.log 2>&1\"
+
+      # Only add if not already present
+      (crontab -l | grep -v jarvis_nightly_autonomous_growth.yaml; echo \"$CRON_JOB\") | crontab -
+

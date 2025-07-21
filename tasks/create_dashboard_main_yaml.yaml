@@ -1,0 +1,53 @@
+task: Create and save dashboard FastAPI file for JARVIS UI
+goals:
+  - Ensure JARVIS has a dashboard to display latest log, memory size, and helpful links
+  - Write the full code to dashboard/main.py
+
+steps:
+  - name: Create dashboard directory if not exists
+    shell: mkdir -p dashboard
+
+  - name: Write dashboard FastAPI file
+    write_file:
+      path: dashboard/main.py
+      content: |
+        from fastapi import FastAPI
+        from fastapi.responses import HTMLResponse
+        from pathlib import Path
+        import os
+
+        app = FastAPI()
+
+        @app.get("/", response_class=HTMLResponse)
+        def dashboard():
+            # Get latest log (if it exists)
+            logs_dir = Path("../logs")
+            latest_log = ""
+            if logs_dir.exists():
+                log_files = sorted(logs_dir.glob("*.log"), key=os.path.getmtime, reverse=True)
+                if log_files:
+                    latest_log = log_files[0].read_text(encoding="utf-8")[:1000]  # Limit snippet size
+
+            # Get memory size
+            memory_path = Path("../.openhands/memory.json")
+            memory_size = memory_path.stat().st_size if memory_path.exists() else 0
+
+            # Render HTML
+            return f"""
+            <html>
+              <head><title>JARVIS Dashboard</title></head>
+              <body style="font-family:sans-serif;">
+                <h1>🧠 JARVIS Dashboard</h1>
+                <p>Status: <strong>Idle</strong></p>
+                <p>Last Task Snippet:</p>
+                <pre>{latest_log or 'No log available'}</pre>
+                <p>Memory JSON Size: {memory_size / 1024:.2f} KB</p>
+                <hr>
+                <p><a href="/logs" target="_blank">View Logs Folder</a></p>
+                <p><a href="/goals" target="_blank">Goal Tracker (coming soon)</a></p>
+                <p><a href="/memory" target="_blank">Memory Visualizer</a></p>
+                <p><a href="/tasks/run" target="_blank">Run Manual Tasks</a></p>
+              </body>
+            </html>
+            """
+

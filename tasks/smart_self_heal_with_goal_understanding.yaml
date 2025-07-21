@@ -1,0 +1,70 @@
+task: smart_self_heal_with_goal_understanding
+
+description: |
+  Fix broken YAML tasks not just by correcting syntax, but by understanding their intended goal.
+  Read the YAML, infer its purpose, and rewrite the task cleanly using that understanding.
+  Retry using GPT until the file is valid and goal-aligned.
+
+steps:
+  - name: "Scan for invalid YAML files"
+    run: |
+      import os, yaml
+      broken_files = []
+      for file in os.listdir("tasks"):
+          if file.endswith(".yaml"):
+              try:
+                  with open(f"tasks/{file}") as f:
+                      yaml.safe_load(f)
+              except Exception as e:
+                  broken_files.append({"file": file, "error": str(e)})
+      return {"invalid_files": broken_files}
+
+  - if: invalid_files
+    foreach: invalid_files
+    as: file_error
+    do:
+      - name: "Fix '{{file_error.file}}' by inferring and rewriting task goal"
+        max_retries: 5
+        run: |
+          import os, openai, yaml
+
+          openai.api_key = os.getenv("OPENAI_API_KEY")
+          path = f"tasks/{{file_error.file}}"
+
+          with open(path) as f:
+              original = f.read()
+
+          prompt = f"""You're an expert YAML agent developer.
+A task YAML is broken, and we need to fix it based on its goal.
+The error was:
+---
+{file_error['error']}
+---
+
+Here is the current YAML:
+---
+{original}
+---
+
+1. First, infer what the YAML is trying to do.
+2. Then rewrite the entire YAML task from scratch to match that goal.
+3. Return only the valid YAML with correct structure.
+Ensure it's runnable and well-structured:"""
+
+          response = openai.ChatCompletion.create(
+              model="gpt-4",
+              messages=[{"role": "user", "content": prompt}],
+              temperature=0.2
+          )
+
+          fixed_yaml = response.choices[0].message.content.strip()
+          with open(path, "w") as f:
+              f.write(fixed_yaml)
+
+          # Check if it's now valid
+          try:
+              yaml.safe_load(fixed_yaml)
+              return {"status": "✅ Fixed successfully"}
+          except Exception as e:
+              raise Exception(f"❌ Still invalid: {e}")
+

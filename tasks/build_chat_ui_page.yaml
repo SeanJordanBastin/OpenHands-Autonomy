@@ -1,0 +1,24 @@
+task:
+  name: Build Chat UI Page
+  description: Build a page like ChatGPT UI to talk to the agent
+  steps:
+    - name: Connect to agent backend
+      run: |
+        echo "Connect to /api/agent/chat to send and receive messages"
+
+    - name: Add persistent storage
+      run: |
+        echo "Save chat history to localStorage or backend"
+
+    - name: Add polish
+      run: |
+        echo "Style layout, timestamp messages, add avatars, auto-scroll"
+
+    - name: Register route
+      run: |
+        echo "Add '/chat' route to React frontend"
+
+    - name: Confirm working UI
+      run: |
+        echo "Go to http://localhost:3000/chat and test the chat UI"
+

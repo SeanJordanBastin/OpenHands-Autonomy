@@ -1,0 +1,56 @@
+task:
+  name: Connect Database to Backend App
+  description: Set up SQLAlchemy database connection and wire it into FastAPI backend.
+  steps:
+    - name: Create app/main.py with basic FastAPI app
+      run: |
+        mkdir -p app && cat > app/main.py <<EOF
+        from fastapi import FastAPI
+
+        app = FastAPI()
+
+        # INSERT ROUTES HERE
+        EOF
+
+    - name: Create db.py with SQLAlchemy engine and get_db
+      run: |
+        mkdir -p app && cat > app/db.py <<EOF
+        import os
+        from sqlalchemy import create_engine
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import sessionmaker
+
+        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+
+        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        Base = declarative_base()
+
+        def get_db():
+            db = SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+        EOF
+
+    - name: Inject database health check route
+      edit:
+        path: app/main.py
+        find: "# INSERT ROUTES HERE"
+        replace: |
+          from app.db import get_db
+          from sqlalchemy.orm import Session
+          from fastapi import Depends
+
+          @app.get("/health/db")
+          def db_health_check(db: Session = Depends(get_db)):
+              try:
+                  db.execute("SELECT 1")
+                  return {"status": "DB connected ✅"}
+              except:
+                  return {"status": "❌ DB connection failed"}
+
+    - name: Confirm DB is working
+      run: curl http://localhost:3000/health/db
+

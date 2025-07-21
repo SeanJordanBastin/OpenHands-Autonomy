@@ -1,0 +1,45 @@
+task: fix_all_yaml_with_gpt_loop
+
+name: fix_all_yaml_with_gpt_loop
+
+steps:
+  - name: Fix all broken YAMLs via sanitizer or GPT
+    run: |
+      echo "🛠️ Starting YAML fix cycle..."
+
+      # Attempt sanitize, fallback to GPT fix
+      for file in \
+        self_heal_with_chatgpt.yaml \
+        test_break.yaml \
+        upgrade_agent_full_auto.yaml \
+        enable_auto_yaml_fixing.yaml \
+        self_writing_loop.yaml; do
+
+        echo "🔍 Checking tasks/$file..."
+        python scripts/yaml_sanitizer.py --path tasks/$file || \
+        poetry run python scripts/ask_gpt_fix.py --file tasks/$file
+      done
+
+  - name: Retry YAML fixes until valid
+    run: |
+      echo "🔁 Verifying all YAMLs are now valid..."
+
+      for file in \
+        self_heal_with_chatgpt.yaml \
+        test_break.yaml \
+        upgrade_agent_full_auto.yaml \
+        enable_auto_yaml_fixing.yaml \
+        self_writing_loop.yaml; do
+
+        echo "🔎 Validating tasks/$file..."
+        while ! python scripts/yaml_sanitizer.py --path tasks/$file; do
+          echo "🚨 $file still broken. Asking GPT for help..."
+          poetry run python scripts/ask_gpt_fix.py --file tasks/$file
+        done
+        echo "✅ $file is now fixed!"
+      done
+
+  - name: Confirm success
+    run: |
+      echo "🎉 All YAML tasks are repaired and validated."
+

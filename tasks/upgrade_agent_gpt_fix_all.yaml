@@ -1,0 +1,66 @@
+task: Upgrade Agent YAML Repair Capabilities
+steps:
+  - name: Add missing `Path` import
+    file: start_agent_safely.py
+    action: insert_import
+    details: from pathlib import Path
+
+  - name: Fix OpenAI client syntax
+    file: start_agent_safely.py
+    action: replace
+    pattern: openai.ChatCompletion.create\(
+    replacement: |
+      client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+      response = client.chat.completions.create(
+
+  - name: Check for OPENAI_API_KEY and raise error if not set
+    file: start_agent_safely.py
+    action: prepend
+    content: |
+      if not os.getenv("OPENAI_API_KEY"):
+          raise EnvironmentError("OPENAI_API_KEY environment variable not set.")
+
+  - name: Loop through all .yaml files and attempt GPT healing
+    file: start_agent_safely.py
+    action: append
+    content: |
+      def fix_all_yaml_tasks():
+          tasks_fixed = []
+          memory = load_memory()
+
+          for file in Path(TASKS_DIR).glob("*.yaml"):
+              with open(file, "r") as f:
+                  content = f.read()
+
+              if is_yaml_valid(content):
+                  print(f"✅ Valid → {file}")
+                  continue
+
+              print(f"❌ Invalid → {file}")
+              try:
+                  response = client.chat.completions.create(
+                      model="gpt-4",
+                      messages=[
+                          {"role": "system", "content": "You are an AI that fixes broken YAML syntax."},
+                          {"role": "user", "content": f"Please fix this YAML:\n{content}"}
+                      ]
+                  )
+                  fixed_yaml = response.choices[0].message.content
+
+                  # Save backup
+                  backup_path = Path(BACKUP_DIR) / file.name.replace(".yaml", "_fixed.yaml")
+                  with open(backup_path, "w") as f:
+                      f.write(fixed_yaml)
+
+                  print(f"🛠️ Fixed → {file} → saved to {backup_path}")
+                  memory[str(file)] = {"fixed_at": str(datetime.now())}
+                  tasks_fixed.append(file)
+
+              except Exception as e:
+                  print(f"❌ GPT fix failed → {file}: {e}")
+
+          save_memory(memory)
+          return tasks_fixed
+
+      fix_all_yaml_tasks()
+

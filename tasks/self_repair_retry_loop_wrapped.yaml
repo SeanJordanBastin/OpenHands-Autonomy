@@ -1,0 +1,69 @@
+task:
+  name: self_repair_retry_loop
+  steps:
+  - run:
+      description: Self-healing loop that detects task failures, calls GPT to fix
+        them, and retries automatically.
+      steps:
+      - name: Detect broken YAMLs
+        run: 'grep -L "task:" tasks/*.yaml | tee broken_files.txt || true
+
+          echo "Detected files missing ''task:'' key saved to broken_files.txt"
+
+          '
+        uses: shell
+      - name: Read broken files
+        run: "import os\nwith open(\"broken_files.txt\") as f:\n    context[\"broken_files\"\
+          ] = [line.strip() for line in f if line.strip()]\n"
+        uses: python
+      - do:
+        - name: Load file content
+          run: "with open(item, \"r\") as f:\n    context[\"file_text\"] = f.read()\n"
+          uses: python
+        - inputs:
+            messages:
+            - content: 'You''re a YAML debugger. Fix this broken OpenDevin task file.
+
+                Ensure the following:
+
+                - All values are properly quoted if needed
+
+                - `task:` is at the top
+
+                - Use double quotes for multiline values
+
+                - Fix indentation
+
+                Output only corrected YAML.
+
+                '
+              role: system
+            - content: '```yaml
+
+                {{file_text}}
+
+                ```
+
+                '
+              role: user
+            model: gpt-4o
+          name: Fix with GPT
+          outputs:
+            save: fixed_yaml
+          uses: chatgpt
+        - name: Backup original + Save fix
+          run: "import os\nbackup_path = f\"{item}.bak\"\nwith open(backup_path, \"\
+            w\") as f:\n    f.write(context[\"file_text\"])\nwith open(item, \"w\"\
+            ) as f:\n    f.write(fixed_yaml)\n"
+          uses: python
+        foreach: broken_files
+        name: For each broken file, attempt fix
+        uses: for-each
+      - name: Retry previously failed tasks
+        run: 'echo "Retrying..."
+
+          poetry run python scripts/agent.py --task-dir tasks/
+
+          '
+        uses: shell
+      task: self_repair_retry_loop

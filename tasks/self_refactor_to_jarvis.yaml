@@ -1,0 +1,55 @@
+task: Self-Refactor Identity to JARVIS
+description: Refactor codebase to adopt the identity of JARVIS (formerly AutonomousAgent)
+steps:
+  - name: Rename class from AutonomousAgent to Jarvis
+    action: replace_in_file
+    path: jarvis/autonomous_agent.py
+    find: 'class AutonomousAgent'
+    replace: 'class Jarvis'
+
+  - name: Update log statements to use JARVIS
+    action: replace_in_file
+    path: jarvis/autonomous_agent.py
+    find: 'AutonomousAgent'
+    replace: 'JARVIS'
+
+  - name: Replace instantiations and references in scripts
+    action: recursive_replace
+    root: scripts/
+    find: 'AutonomousAgent'
+    replace: 'Jarvis'
+
+  - name: Replace import paths from agent.autonomous_agent to jarvis.autonomous_agent
+    action: recursive_replace
+    root: scripts/
+    find: 'from agent.autonomous_agent'
+    replace: 'from jarvis.autonomous_agent'
+
+  - name: Replace from agent. to from jarvis.
+    action: recursive_replace
+    root: scripts/
+    find: 'from agent.'
+    replace: 'from jarvis.'
+
+  - name: Replace task_loader imports
+    action: recursive_replace
+    root: scripts/
+    find: 'agent.task_loader'
+    replace: 'jarvis.task_loader'
+
+  - name: Refactor all YAML task references
+    action: recursive_replace
+    root: tasks/
+    find: 'agent.task_loader'
+    replace: 'jarvis.task_loader'
+
+  - name: Refactor any fallback log or handler text
+    action: recursive_replace
+    root: scripts/
+    find: 'Using dummy AutonomousAgent'
+    replace: 'Using dummy JARVIS agent'
+
+  - name: Print success
+    action: log
+    message: "🎀 JARVIS has fully adopted her new identity. All modules now reference her as JARVIS."
+

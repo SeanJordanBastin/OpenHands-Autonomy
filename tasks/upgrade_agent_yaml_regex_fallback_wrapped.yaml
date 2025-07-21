@@ -1,0 +1,43 @@
+task:
+  name: upgrade_agent_yaml_regex_fallback
+  steps:
+  - run:
+      description: 'Add a fallback regex-based patcher to auto-repair YAML parsing
+        errors when GPT is unavailable or not needed. This is Step 3 in the agent
+        autonomy upgrade.
+
+        '
+      steps:
+      - content: "import re\n\ndef basic_yaml_regex_fix(content):\n    # Fix 1: Add\
+          \ missing colon to lines that look like key-only\n    content = re.sub(r\"\
+          ^(\\s*[\\w\\-]+)\\s*$\", r\"\\1:\", content, flags=re.MULTILINE)\n\n   \
+          \ # Fix 2: Remove invalid quotes on scalars (common stream issue)\n    content\
+          \ = re.sub(r\"^(\\s*[\\w\\-]+):\\s*['\\\"](.*)['\\\"]$\", r\"\\1: \\2\"\
+          , content, flags=re.MULTILINE)\n\n    # Fix 3: Add missing closing line\
+          \ if stream is cut off\n    if not content.endswith('\\n'):\n        content\
+          \ += '\\n'\n\n    return content\n"
+        file: agents/yaml_patchers/regex_fallback.py
+        name: add regex fallback patcher
+      - find_replace:
+          file: core/yaml_engine.py
+          pattern: "def repair_yaml\\(content, filename\\):\n  .*\n  repaired = gpt_yaml_fix\\\
+            (content\\)\n"
+          replacement: "def repair_yaml(content, filename):\n    from agents.yaml_patchers.regex_fallback\
+            \ import basic_yaml_regex_fix\n    try:\n        repaired = gpt_yaml_fix(content)\n\
+            \    except Exception:\n        repaired = basic_yaml_regex_fix(content)\n"
+        name: wire fallback into YAML engine
+      - content: 'from memory.repair_log import save_fix_to_log
+
+          save_fix_to_log(filename, repaired)
+
+          '
+        file: core/yaml_engine.py
+        insert_after: repaired = basic_yaml_regex_fix(content)
+        name: confirm memory logging still works
+      - message: 'Fallback regex-based YAML repair added. If GPT call fails or is
+          skipped, the agent will use regex patching logic instead and store the fix
+          in memory.
+
+          '
+        name: done
+      task: upgrade_agent_yaml_regex_fallback

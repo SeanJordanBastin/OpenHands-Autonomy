@@ -1,0 +1,19 @@
+task:
+  name: Seed Test Data into Database
+  description: Populate the database with test records for development and testing.
+  steps:
+    - name: Create seeder script
+      command: |
+        Create `scripts/seed.py` that:
+        - Imports models and SessionLocal
+        - Inserts test Projects, Tasks, or Files into the DB
+        - Wrap in try/except and print number of records added
+
+    - name: Run seeder
+      command: |
+        Run `poetry run python scripts/seed.py` to populate the DB
+
+    - name: Log completion
+      command: |
+        Log "Seed complete ✅" to terminal
+

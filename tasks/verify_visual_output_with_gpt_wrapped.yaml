@@ -1,0 +1,26 @@
+task:
+  name: verify_visual_output_with_gpt
+  steps:
+  - run:
+      description: "Send latest screenshot to GPT-4 Vision and ask if \u274C marks\
+        \ are still present or if UI looks visually correct.\n"
+      steps:
+      - name: Load latest screenshot and send to GPT
+        run: "import os, base64, openai\nfrom PIL import Image\n\n# Find latest PNG\n\
+          folder = os.path.expanduser(\"~/Downloads\")\nlatest_file = sorted([f for\
+          \ f in os.listdir(folder) if f.endswith(\".png\")])[-1]\npath = os.path.join(folder,\
+          \ latest_file)\n\n# Encode image\nwith open(path, \"rb\") as img:\n    b64\
+          \ = base64.b64encode(img.read()).decode(\"utf-8\")\n\n# Send to GPT-4 with\
+          \ vision\nopenai.api_key = os.getenv(\"OPENAI_API_KEY\")\nresponse = openai.ChatCompletion.create(\n\
+          \    model=\"gpt-4-vision-preview\",\n    messages=[\n        {\n      \
+          \      \"role\": \"user\",\n            \"content\": [\n               \
+          \ {\"type\": \"text\", \"text\": \"Does this screenshot still show \u274C\
+          \ marks or any visible UI errors? If not, confirm that the UI looks clean\
+          \ and correct.\"},\n                {\"type\": \"image_url\", \"image_url\"\
+          : {\"url\": f\"data:image/png;base64,{b64}\"}}\n            ]\n        }\n\
+          \    ],\n    temperature=0.1\n)\n\nanswer = response.choices[0].message.content.strip()\n\
+          \nif \"\u274C\" in answer or \"error\" in answer.lower() or \"not fixed\"\
+          \ in answer.lower():\n    raise Exception(f\"\u274C GPT says UI still has\
+          \ issues: {answer}\")\nelse:\n    return {\"status\": \"\u2705 Screenshot\
+          \ confirmed clean by GPT\", \"summary\": answer}\n"
+      task: verify_visual_output_with_gpt

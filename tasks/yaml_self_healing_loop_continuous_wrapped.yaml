@@ -1,0 +1,69 @@
+task:
+  name: yaml_self_healing_loop_continuous
+  steps:
+  - run:
+      description: Continuously monitor all task YAMLs and fix broken ones as they
+        appear using GPT or fallback methods.
+      steps:
+      - name: Load all YAML files in /tasks
+        run: "import os, yaml\nbroken_files = []\nfor fname in os.listdir(\"tasks\"\
+          ):\n    if not fname.endswith(\".yaml\"):\n        continue\n    try:\n\
+          \        with open(f\"tasks/{fname}\") as f:\n            yaml.safe_load(f)\n\
+          \    except Exception as e:\n        broken_files.append((fname, str(e)))\n\
+          context[\"broken_files\"] = broken_files\n"
+        uses: python
+      - name: Log broken YAMLs
+        run: "with open(\"logs/yaml_self_healing_log.txt\", \"a\") as log:\n    for\
+          \ fname, err in context[\"broken_files\"]:\n        log.write(f\"[BROKEN]\
+          \ {fname}: {err}\\n\")\n"
+        uses: python
+      - if: broken_files
+        inputs:
+          messages:
+          - content: 'You are a YAML auto-fixer. Your job is to repair broken YAML
+              tasks used by an autonomous software agent.
+
+              Return valid YAML only. Wrap the fixed file for safety and save under
+              *_wrapped.yaml.
+
+              '
+            role: system
+          - content: 'Please fix the following YAMLs:
+
+              {% for fname, err in broken_files %}
+
+              File: {{ fname }}
+
+              Error: {{ err }}
+
+              Content:
+
+              {{ read_file("tasks/" + fname) }}
+
+              {% endfor %}
+
+              '
+            role: user
+          model: gpt-4o
+        name: Ask GPT to fix YAMLs
+        uses: chatgpt
+      - if: chatgpt.output
+        name: Save fixed YAMLs
+        run: "import re, os\nfixed_yaml_blocks = re.findall(r\"```yaml(.*?)```\",\
+          \ chatgpt.output, re.DOTALL)\nfor block in fixed_yaml_blocks:\n    lines\
+          \ = block.strip().splitlines()\n    fname = None\n    if lines and lines[0].startswith(\"\
+          # File:\"):\n        fname = lines.pop(0).replace(\"# File:\", \"\").strip()\n\
+          \    else:\n        fname = \"unknown_fixed.yaml\"\n    cleaned = \"\\n\"\
+          .join(lines)\n    with open(f\"tasks/{fname.replace('.yaml', '_wrapped.yaml')}\"\
+          , \"w\") as f:\n        f.write(cleaned)\n"
+        uses: python
+      - name: Loop pause and rerun
+        run: 'echo "Sleeping for 15 seconds before rerunning..."
+
+          sleep 15
+
+          poetry run python scripts/agent.py --task-file tasks/yaml_self_healing_loop_continuous.yaml
+
+          '
+        uses: shell
+      task: enable_continuous_yaml_self_healing_loop

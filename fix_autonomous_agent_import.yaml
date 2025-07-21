@@ -1,0 +1,35 @@
+task: Fix import error by creating agent package with AutonomousAgent
+goals:
+  - Ensure 'agent' is treated as a package by creating __init__.py
+  - Ensure 'agent/autonomous_agent.py' exists with a valid AutonomousAgent class
+  - Confirm that import from agent.autonomous_agent will succeed
+
+steps:
+  - description: Check if agent/__init__.py exists, create it if not
+    run: |
+      import os
+      init_path = "agent/__init__.py"
+      if not os.path.exists(init_path):
+          with open(init_path, "w") as f:
+              f.write("# Init file for agent package\n")
+
+  - description: Check if autonomous_agent.py exists inside agent
+    run: |
+      import os
+      agent_file = "agent/autonomous_agent.py"
+      if not os.path.exists(agent_file):
+          with open(agent_file, "w") as f:
+              f.write(
+                  "class AutonomousAgent:\n"
+                  "    def __init__(self):\n"
+                  "        print(\"AutonomousAgent initialized\")\n"
+              )
+
+  - description: Confirm AutonomousAgent can be imported from agent.autonomous_agent
+    run: |
+      try:
+          from agent.autonomous_agent import AutonomousAgent
+          print("✅ Import successful")
+      except Exception as e:
+          raise ImportError(f"❌ Import failed: {e}")
+

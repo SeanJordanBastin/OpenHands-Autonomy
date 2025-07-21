@@ -1,0 +1,6 @@
+task:
+  name: self_repair_yaml_engine
+  steps:
+    - run: |
+        poetry run python scripts/yaml_self_heal_engine.py
+

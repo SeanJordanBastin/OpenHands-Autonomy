@@ -1,0 +1,57 @@
+task:
+  id: workflow_optimization_module
+  description: >
+    Implement heuristic logic to delay low-priority tasks if higher-priority 
+    tasks are pending, storing all decisions transparently.
+  steps:
+    - step: Load current task queue (task_queue.json).
+      action: file.read
+      params:
+        filepath: "./task_queue.json"
+
+    - step: Identify low and high-priority tasks based on error complexity.
+      action: code.run
+      params:
+        language: python
+        script: |
+          import json
+
+          with open('./task_queue.json', 'r') as f:
+              task_queue = json.load(f)
+
+          optimized_queue = []
+          delayed_tasks = []
+
+          # Heuristic: Tasks labeled as "Simple" complexity get delayed if "Complex" tasks exist.
+          has_complex_task = any(task.get('priority', 'Complex') == 'Complex' for task in task_queue)
+
+          for task in task_queue:
+              priority = task.get('priority', 'Complex')
+              if priority == 'Simple' and has_complex_task:
+                  task['status'] = 'Delayed'
+                  delayed_tasks.append(task)
+              else:
+                  optimized_queue.append(task)
+
+          # Re-append delayed tasks at the end
+          optimized_queue.extend(delayed_tasks)
+
+          with open('./task_queue.json', 'w') as f:
+              json.dump(optimized_queue, f, indent=2)
+
+          # Save decision log
+          decisions = {
+              "delayed_tasks": [task['id'] for task in delayed_tasks],
+              "timestamp": __import__('datetime').datetime.now().isoformat()
+          }
+
+          with open('./workflow_decisions.json', 'w') as f:
+              json.dump(decisions, f, indent=2)
+
+          print(f"Workflow optimization complete. {len(delayed_tasks)} tasks delayed.")
+
+    - step: Verify workflow decisions log creation.
+      action: file.exists
+      params:
+        filepath: "./workflow_decisions.json"
+

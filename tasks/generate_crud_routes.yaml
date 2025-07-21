@@ -1,0 +1,23 @@
+task:
+  name: Generate CRUD API Routes for Model
+  description: Automatically generate full FastAPI CRUD endpoints for a selected SQLAlchemy model.
+  steps:
+    - name: Prompt for model name
+      command: |
+        Ask: "Which model would you like to generate CRUD routes for?"
+
+    - name: Generate Pydantic schemas
+      command: |
+        Create a new file `app/schemas/<model>.py` with Create, Update, and Response schemas
+
+    - name: Generate FastAPI router
+      command: |
+        Create `app/routes/<model>.py` with:
+        - GET, POST, PUT, DELETE endpoints
+        - Use get_db dependency
+        - Return appropriate responses
+
+    - name: Register router in app
+      command: |
+        Include the new route in `main.py` or `app.py` with `app.include_router(...)`
+

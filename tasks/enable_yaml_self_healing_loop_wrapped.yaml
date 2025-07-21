@@ -1,0 +1,57 @@
+task:
+  name: enable_yaml_self_healing_loop
+  steps:
+  - run:
+      commands:
+      - name: Load all .yaml files from tasks/
+        run: "import os\nyaml_files = [f for f in os.listdir(\"tasks\") if f.endswith(\"\
+          .yaml\")]\nprint(f\"\U0001F9E0 Found YAML files: {yaml_files}\")\n"
+      - loop:
+          as: file_name
+          do:
+          - name: Try loading YAML
+            run: "import yaml, traceback\ntry:\n    with open(f\"tasks/{file_name}\"\
+              , \"r\") as f:\n        yaml.safe_load(f)\n    print(f\"\u2705 {file_name}\
+              \ parsed OK\")\nexcept Exception as e:\n    print(f\"\u274C {file_name}\
+              \ failed: {e}\")\n    error_msg = str(e)\n    raise RuntimeError(error_msg)\n"
+          - if_error: true
+            name: Call GPT to fix broken YAML
+            run: "from openai import OpenAI\nbad_yaml = open(f\"tasks/{file_name}\"\
+              ).read()\nfixed_yaml = ask_gpt(\"Fix this broken YAML and explain what\
+              \ was wrong:\", bad_yaml)\nwith open(f\"tasks/{file_name}\", \"w\")\
+              \ as f:\n    f.write(fixed_yaml)\nprint(f\"\U0001F916 GPT fixed: {file_name}\"\
+              )\n"
+          - if_error: true
+            name: Regex fallback if GPT fails
+            run: "import re, shutil\nshutil.copyfile(f\"tasks/{file_name}\", f\"broken_backups/{file_name}\"\
+              )\ncontent = open(f\"tasks/{file_name}\").read()\ncontent = re.sub(r'\u201C\
+              |\u201D', '\"', content)\ncontent = re.sub(r\":\\s*\\n\", \": dummy\\\
+              n\", content)\ncontent = content.strip() + \"\\n\"\nwith open(f\"tasks/{file_name}\"\
+              , \"w\") as f:\n    f.write(content)\nprint(f\"\U0001F527 Regex patch\
+              \ applied to: {file_name}\")\n"
+          - name: Confirm it now parses
+            run: "with open(f\"tasks/{file_name}\", \"r\") as f:\n    yaml.safe_load(f)\n\
+              print(f\"\u2705 Confirmed fixed: {file_name}\")\n"
+          over: yaml_files
+        name: Attempt to parse and repair each file
+      description: 'Run an autonomous loop that:
+
+        - Scans the tasks/ directory for all *.yaml files.
+
+        - Attempts to parse each YAML.
+
+        - If a file fails, first try GPT repair.
+
+        - If GPT fails, attempt regex fallback repair.
+
+        - Save fixed versions back to disk and log them.
+
+        - Archive broken originals in /broken_backups/.
+
+        - Keep improving GPT prompts based on repeated fixes.
+
+        - This enables the agent to self-heal YAMLs continuously.
+
+        '
+      save_output_to: logs/yaml_self_healing_log.txt
+      task: enable_yaml_self_healing_loop

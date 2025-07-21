@@ -1,0 +1,53 @@
+task:
+  id: dynamic_task_reprioritization
+  description: >
+    Dynamically adjust task queue priority based on error complexity 
+    stored in error_classification.json.
+  steps:
+    - step: Load current task queue (task_queue.json).
+      action: file.read
+      params:
+        filepath: "./task_queue.json"
+
+    - step: Load error classification data (error_classification.json).
+      action: file.read
+      params:
+        filepath: "./error_classification.json"
+
+    - step: Reprioritize tasks, prioritizing complex errors first.
+      action: code.run
+      params:
+        language: python
+        script: |
+          import json
+
+          with open('./task_queue.json', 'r') as f:
+              task_queue = json.load(f)
+
+          with open('./error_classification.json', 'r') as f:
+              classifications = json.load(f)
+
+          # Separate tasks based on error complexity
+          complex_tasks = []
+          simple_tasks = []
+
+          for task in task_queue:
+              error_id = task.get("error_id")
+              if error_id and classifications.get(error_id, {}).get("complexity") == "Complex":
+                  complex_tasks.append(task)
+              else:
+                  simple_tasks.append(task)
+
+          # Recombine tasks with complex tasks at the front
+          reprioritized_queue = complex_tasks + simple_tasks
+
+          with open('./task_queue.json', 'w') as f:
+              json.dump(reprioritized_queue, f, indent=2)
+
+          print("Task queue reprioritization complete. Complex tasks moved to top.")
+
+    - step: Verify task queue reprioritization.
+      action: file.exists
+      params:
+        filepath: "./task_queue.json"
+

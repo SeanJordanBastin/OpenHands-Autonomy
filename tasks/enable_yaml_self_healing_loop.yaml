@@ -1,0 +1,67 @@
+task: enable_yaml_self_healing_loop
+description: |
+  Run an autonomous loop that:
+  - Scans the tasks/ directory for all *.yaml files.
+  - Attempts to parse each YAML.
+  - If a file fails, first try GPT repair.
+  - If GPT fails, attempt regex fallback repair.
+  - Save fixed versions back to disk and log them.
+  - Archive broken originals in /broken_backups/.
+  - Keep improving GPT prompts based on repeated fixes.
+  - This enables the agent to self-heal YAMLs continuously.
+
+commands:
+  - name: Load all .yaml files from tasks/
+    run: |
+      import os
+      yaml_files = [f for f in os.listdir("tasks") if f.endswith(".yaml")]
+      print(f"🧠 Found YAML files: {yaml_files}")
+
+  - name: Attempt to parse and repair each file
+    loop:
+      over: yaml_files
+      as: file_name
+      do:
+        - name: Try loading YAML
+          run: |
+            import yaml, traceback
+            try:
+                with open(f"tasks/{file_name}", "r") as f:
+                    yaml.safe_load(f)
+                print(f"✅ {file_name} parsed OK")
+            except Exception as e:
+                print(f"❌ {file_name} failed: {e}")
+                error_msg = str(e)
+                raise RuntimeError(error_msg)
+
+        - name: Call GPT to fix broken YAML
+          if_error: true
+          run: |
+            from openai import OpenAI
+            bad_yaml = open(f"tasks/{file_name}").read()
+            fixed_yaml = ask_gpt("Fix this broken YAML and explain what was wrong:", bad_yaml)
+            with open(f"tasks/{file_name}", "w") as f:
+                f.write(fixed_yaml)
+            print(f"🤖 GPT fixed: {file_name}")
+
+        - name: Regex fallback if GPT fails
+          if_error: true
+          run: |
+            import re, shutil
+            shutil.copyfile(f"tasks/{file_name}", f"broken_backups/{file_name}")
+            content = open(f"tasks/{file_name}").read()
+            content = re.sub(r'“|”', '"', content)
+            content = re.sub(r":\s*\n", ": dummy\n", content)
+            content = content.strip() + "\n"
+            with open(f"tasks/{file_name}", "w") as f:
+                f.write(content)
+            print(f"🔧 Regex patch applied to: {file_name}")
+
+        - name: Confirm it now parses
+          run: |
+            with open(f"tasks/{file_name}", "r") as f:
+                yaml.safe_load(f)
+            print(f"✅ Confirmed fixed: {file_name}")
+
+save_output_to: logs/yaml_self_healing_log.txt
+

@@ -1,0 +1,16 @@
+tasks:
+  - description: "Install frontend dependencies"
+    command: "cd frontend && npm install"
+
+  - description: "Install backend dependencies"
+    command: "cd openhands && poetry install"
+
+  - description: "Run database migrations"
+    command: "cd openhands && poetry run alembic upgrade head"
+
+  - description: "Start backend server"
+    command: "cd openhands && poetry run uvicorn app.main:app --reload"
+
+  - description: "Start frontend server"
+    command: "cd frontend && npm run dev"
+

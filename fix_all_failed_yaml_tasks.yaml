@@ -1,0 +1,94 @@
+task: "🧠 Fix All Failed YAML Tasks Based on Terminal Screenshot"
+
+vars:
+  terminal_screenshot: "./screenshots/Screenshot_2025-07-21_at_7.27.35_PM.png"
+  task_directory: "./tasks/"
+  max_retries: 3
+
+steps:
+
+  - name: 📸 Load Screenshot
+    run: echo "Using screenshot: ${terminal_screenshot}"
+
+  - name: 🔍 Ask GPT to Identify All Failed YAML Files
+    ask_gpt:
+      prompt: |
+        This is a screenshot of a terminal output showing several YAML tasks.
+        Identify all the YAML files that failed to parse or run, and explain why each one failed.
+        Then, rewrite each of the broken YAML files correctly and return the full corrected versions.
+        If any tools, formats, or dependencies are missing, you are permitted to add or install them.
+        Output format:
+        ---
+        filename: <file>
+        corrected_yaml: |
+          <fixed_yaml_here>
+        ---
+      image: ${terminal_screenshot}
+    save_response_as: failed_yaml_fixes
+
+  - name: 💾 Overwrite Broken YAMLs with Fixed Versions
+    loop:
+      for_each: ${failed_yaml_fixes}
+      steps:
+        - name: 🧠 Save Fixed YAML
+          run: |
+            echo "${item.corrected_yaml}" > ${task_directory}${item.filename}
+            echo "✅ Saved: ${item.filename}"
+
+  - name: 🔁 Retry Each Fixed Task to Confirm Success
+    loop:
+      for_each: ${failed_yaml_fixes}
+      steps:
+        - name: 🏃 Run Task to Test Fix
+          run: poetry run python scripts/agent.py --task-file ${task_directory}${item.filename}
+          on_error: continue
+
+        - name: 📸 Screenshot After Retry
+          run: python scripts/utils/take_screenshot.py --output ./screenshots/${item.filename}_result.png
+
+        - name: 🧠 Ask GPT if Fix Was Successful
+          ask_gpt:
+            prompt: |
+              Here's the screenshot from re-running the fixed task file: ${item.filename}
+              Based on this visual, does the task now succeed (✅) or still fail (❌)?
+              If ❌, suggest a new fix or propose a fresh YAML approach.
+            image: ./screenshots/${item.filename}_result.png
+          save_response_as: result_verdict
+
+        - name: 🔁 Retry if ❌ with Max 3 Attempts
+          if: ${result_verdict} == "❌"
+          loop:
+            while: ${attempt} < ${max_retries}
+            steps:
+              - name: 🧠 Ask GPT for New Strategy to Fix Task
+                ask_gpt:
+                  prompt: |
+                    We've retried the task ${item.filename} ${attempt} times and it still fails.
+                    Reassess and provide a fresh YAML task that meets the original goal.
+                  save_response_as: new_strategy_yaml
+
+              - name: 💾 Overwrite with New Strategy
+                run: echo "${new_strategy_yaml}" > ${task_directory}${item.filename}
+
+              - name: 🔄 Retry Again
+                run: poetry run python scripts/agent.py --task-file ${task_directory}${item.filename}
+                on_error: continue
+
+              - name: 📸 Screenshot for Verification
+                run: python scripts/utils/take_screenshot.py --output ./screenshots/${item.filename}_retry_${attempt}.png
+
+              - name: 🧠 Ask GPT if New Retry Succeeded
+                ask_gpt:
+                  prompt: |
+                    Here's the retry screenshot for ${item.filename} on attempt ${attempt}.
+                    Was this a ✅ or ❌? If ❌, give next fix.
+                  image: ./screenshots/${item.filename}_retry_${attempt}.png
+                save_response_as: result_verdict
+
+              - name: ✅ Exit Retry Loop if Success
+                if: ${result_verdict} == "✅"
+                run: echo "✅ Success confirmed for ${item.filename}" && break
+
+              - name: ➕ Increment Attempt
+                run: export attempt=$((attempt + 1))
+

@@ -1,0 +1,28 @@
+task:
+  name: Enable Self-Improving GPT Feedback Loop
+  description: Let the agent query ChatGPT when it encounters errors
+  steps:
+    - name: Detect failure
+      run: |
+        echo "Monitor logs for errors, exceptions, or failed tasks"
+
+    - name: Form a natural language question
+      run: |
+        echo "Generate prompt using:
+        - Stack trace
+        - Task name
+        - Action attempted
+        Ask: 'What went wrong and how can I fix it?'"
+
+    - name: Query ChatGPT or OpenAI API
+      run: |
+        python scripts/self_improve.py
+
+    - name: Retry with new insight
+      run: |
+        echo "If GPT gives code, apply fix and re-run failed step."
+
+    - name: Log all Q&A
+      run: |
+        echo "Save to /logs/self_learn/"
+

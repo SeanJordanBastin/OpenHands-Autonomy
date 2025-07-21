@@ -1,0 +1,25 @@
+task:
+  name: Build and Connect Chat UI Loop
+  steps:
+    - run: |
+        import React, { useState, useEffect } from "react";
+        const Chat = () => {
+          const [messages, setMessages] = useState([]);
+          const [input, setInput] = useState("");
+
+          const handleSend = () => {
+            setMessages((prev) => [...prev, { sender: 'user', text: input }]);
+            setInput("");
+          };
+
+          return (
+            <div>
+              {messages.map((msg, i) => (
+                <div key={i}><b>{msg.sender}:</b> {msg.text}</div>
+              ))}
+              <input value={input} onChange={(e) => setInput(e.target.value)} />
+              <button onClick={handleSend}>Send</button>
+            </div>
+          );
+        };
+

@@ -1,0 +1,10 @@
+task:
+  name: Auto-Migrate Model Changes
+  description: Automatically generate and apply Alembic migrations.
+  steps:
+    - name: Autogenerate Alembic migration
+      run: alembic revision --autogenerate -m "auto migration"
+
+    - name: Apply Alembic migration
+      run: alembic upgrade head
+

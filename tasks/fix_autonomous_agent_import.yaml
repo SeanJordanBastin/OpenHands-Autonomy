@@ -1,0 +1,30 @@
+task:
+  description: Fix import error in scripts/agent.py caused by missing AutonomousAgent module
+  steps:
+    - summary: Verify scripts/agent.py has a broken import
+      file: scripts/agent.py
+      instruction: |
+        Confirm that this file tries to import AutonomousAgent from an invalid path.
+        Identify the exact ModuleNotFoundError and which import line is broken.
+
+    - summary: Create or repair agent/autonomous_agent.py
+      file: agent/autonomous_agent.py
+      instruction: |
+        Ensure this file exists and contains a working definition of class AutonomousAgent.
+        If it’s missing, define a placeholder AutonomousAgent class that logs when it runs.
+        Add a run() method to simulate task processing.
+
+    - summary: Add __init__.py if missing so agent is a package
+      file: agent/__init__.py
+      instruction: |
+        Add an empty __init__.py file to the agent/ directory so it is recognized as a package.
+
+    - summary: Fix the import in scripts/agent.py
+      file: scripts/agent.py
+      instruction: |
+        Update the import statement to:
+          from agent.autonomous_agent import AutonomousAgent
+
+    - summary: Rerun in loop mode to confirm fix
+      command: poetry run python scripts/agent.py --loop
+

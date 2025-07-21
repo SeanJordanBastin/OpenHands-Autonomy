@@ -1,0 +1,52 @@
+task: fix_broken_yamls_with_gpt
+
+name: fix_broken_yamls_with_gpt
+
+description: >
+  Fully repair the following YAMLs:
+    - self_heal_with_chatgpt.yaml
+    - test_break.yaml
+    - upgrade_agent_full_auto.yaml
+    - enable_auto_yaml_fixing.yaml
+    - self_writing_loop.yaml
+  If broken, sanitize them or ask GPT to help. Retry until all are valid.
+
+steps:
+  - name: Loop over each broken YAML and attempt repair
+    run: |
+      echo "🔁 Starting YAML fix loop..."
+
+      files=(
+        "self_heal_with_chatgpt.yaml"
+        "test_break.yaml"
+        "upgrade_agent_full_auto.yaml"
+        "enable_auto_yaml_fixing.yaml"
+        "self_writing_loop.yaml"
+      )
+
+      for file in "${files[@]}"; do
+        echo "🔍 Checking tasks/$file..."
+
+        # Step 1: Try sanitizer
+        if python scripts/yaml_sanitizer.py --path tasks/$file; then
+          echo "✅ $file is valid after sanitation"
+          continue
+        fi
+
+        # Step 2: Ask GPT for a fix
+        echo "🤖 Sanitizer failed. Asking GPT to help fix $file..."
+        poetry run python scripts/ask_gpt_fix.py --file tasks/$file
+
+        # Step 3: Retry until it validates
+        while ! python scripts/yaml_sanitizer.py --path tasks/$file; do
+          echo "⚠️ Still broken. Re-asking GPT..."
+          poetry run python scripts/ask_gpt_fix.py --file tasks/$file
+        done
+
+        echo "✅ $file is now fixed!"
+      done
+
+  - name: Summary
+    run: |
+      echo "🎉 All broken YAMLs are now repaired, validated, and ready."
+

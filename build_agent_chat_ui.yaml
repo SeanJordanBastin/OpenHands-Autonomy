@@ -1,0 +1,70 @@
+task:
+  id: build_agent_chat_ui
+  description: >
+    Autonomously build a simple, GPT-like web-based chat UI allowing user-agent conversations. 
+    The UI must support real-time messaging, input/output prompts, and display a conversation history 
+    similar in style to GPT's UI. If errors occur, the agent may autonomously query GPT for guidance.
+    The completed UI must be operational within 10 hours.
+  steps:
+    - step: Initialize new React/Vite frontend app named "agent-chat-ui".
+      action: shell.execute
+      params:
+        command: |
+          npm create vite@latest agent-chat-ui -- --template react
+          cd agent-chat-ui
+          npm install
+
+    - step: Install required dependencies for chat UI (Tailwind, Axios, ShadCN UI).
+      action: shell.execute
+      params:
+        command: |
+          cd agent-chat-ui
+          npm install tailwindcss postcss autoprefixer axios
+          npx tailwindcss init -p
+          npm install shadcn-ui
+
+    - step: Configure Tailwind CSS for styling.
+      action: file.write
+      params:
+        filepath: "./agent-chat-ui/tailwind.config.js"
+        content: |
+          module.exports = {
+            content: ["./index.html", "./src/**/*.{js,jsx}"],
+            theme: { extend: {} },
+            plugins: [],
+          };
+
+    - step: Develop frontend chat UI components (chat window, message input, conversation display).
+      action: code.request_gpt_assistance
+      params:
+        instructions: >
+          Provide complete, production-ready React components using Tailwind and ShadCN UI.
+          Include a main chat window (scrollable), message input box, and message bubbles. Style closely to ChatGPT UI.
+
+    - step: Create backend API (FastAPI) endpoint for agent communication (`POST /chat`).
+      action: code.request_gpt_assistance
+      params:
+        instructions: >
+          Develop a FastAPI Python backend (`main.py`) serving on port 3001.
+          Implement a POST endpoint `/chat` accepting user messages (JSON) and returning agent-generated replies.
+          Include basic CORS setup to allow frontend-backend communication.
+
+    - step: Connect frontend to backend via Axios POST request, enabling real-time messaging.
+      action: code.request_gpt_assistance
+      params:
+        instructions: >
+          Use Axios to POST user's messages from React frontend to FastAPI backend (`http://localhost:3001/chat`).
+          Render returned agent replies in the chat UI immediately after receiving the response.
+
+    - step: Implement error catching. On error, agent autonomously queries GPT for debugging help.
+      action: internal.self_heal_with_gpt
+      params:
+        context: "Building web-based chat UI integration, frontend-backend Axios calls, real-time messaging."
+
+    - step: Launch and verify UI functionality locally.
+      action: shell.execute
+      params:
+        command: |
+          cd agent-chat-ui
+          npm run dev
+

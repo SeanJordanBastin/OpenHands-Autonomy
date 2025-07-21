@@ -1,0 +1,65 @@
+task: self_repair_retry_loop
+description: Self-healing loop that detects task failures, calls GPT to fix them, and retries automatically.
+steps:
+  - name: Detect broken YAMLs
+    uses: shell
+    run: |
+      grep -L "task:" tasks/*.yaml | tee broken_files.txt || true
+      echo "Detected files missing 'task:' key saved to broken_files.txt"
+
+  - name: Read broken files
+    uses: python
+    run: |
+      import os
+      with open("broken_files.txt") as f:
+          context["broken_files"] = [line.strip() for line in f if line.strip()]
+
+  - name: For each broken file, attempt fix
+    uses: for-each
+    foreach: broken_files
+    do:
+      - name: Load file content
+        uses: python
+        run: |
+          with open(item, "r") as f:
+              context["file_text"] = f.read()
+
+      - name: Fix with GPT
+        uses: chatgpt
+        inputs:
+          model: gpt-4o
+          messages:
+            - role: system
+              content: |
+                You're a YAML debugger. Fix this broken OpenDevin task file.
+                Ensure the following:
+                - All values are properly quoted if needed
+                - `task:` is at the top
+                - Use double quotes for multiline values
+                - Fix indentation
+                Output only corrected YAML.
+            - role: user
+              content: |
+                ```yaml
+                {{file_text}}
+                ```
+
+        outputs:
+          save: fixed_yaml
+
+      - name: Backup original + Save fix
+        uses: python
+        run: |
+          import os
+          backup_path = f"{item}.bak"
+          with open(backup_path, "w") as f:
+              f.write(context["file_text"])
+          with open(item, "w") as f:
+              f.write(fixed_yaml)
+
+  - name: Retry previously failed tasks
+    uses: shell
+    run: |
+      echo "Retrying..."
+      poetry run python scripts/agent.py --task-dir tasks/
+

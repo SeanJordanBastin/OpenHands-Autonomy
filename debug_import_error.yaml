@@ -1,0 +1,33 @@
+task: Debug import error for AutonomousAgent from agent.autonomous_agent
+goals:
+  - Print current working directory
+  - Print __file__ path and sys.path
+  - Check if 'agent' folder exists and is importable
+  - Report the problem
+
+steps:
+  - description: Print Python execution context and sys.path
+    run: |
+      import os, sys
+      print("📂 Current Working Directory:", os.getcwd())
+      print("📄 Current __file__ path:", __file__)
+      print("🧠 sys.path:")
+      for p in sys.path:
+          print("   -", p)
+
+  - description: Check if 'agent/autonomous_agent.py' exists
+    run: |
+      import os
+      exists = os.path.exists("agent/autonomous_agent.py")
+      print("✅ agent/autonomous_agent.py exists" if exists else "❌ agent/autonomous_agent.py is missing")
+
+  - description: Attempt to import AutonomousAgent and show detailed error
+    run: |
+      try:
+          from agent.autonomous_agent import AutonomousAgent
+          print("✅ Successfully imported AutonomousAgent")
+      except Exception as e:
+          print("❌ Failed to import AutonomousAgent:")
+          print("   ", type(e).__name__ + ":", e)
+
+

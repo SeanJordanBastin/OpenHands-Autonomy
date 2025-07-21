@@ -1,0 +1,27 @@
+task:
+  name: Connect Database to Backend App
+  description: Set up SQLAlchemy database connection and wire it into FastAPI backend.
+  steps:
+    - name: Create db.py with SQLAlchemy engine, Base, SessionLocal, and get_db
+      generate:
+        file: app/db.py
+        prompt: |
+          Create a SQLAlchemy setup file:
+          - Use `DATABASE_URL` from environment
+          - Define `engine`, `SessionLocal`, `Base`
+          - Include `get_db()` dependency
+          - Use declarative_base() and async-safe session
+
+    - name: Inject database dependency into FastAPI app
+      edit:
+        file: app/main.py
+        prompt: |
+          Import `get_db` from `app.db`.
+          Add a new route: `@app.get("/health/db")` that:
+          - Opens a DB session
+          - Executes a simple query like `SELECT 1`
+          - Returns "DB connected ✅" or error
+
+    - name: Confirm DB is working
+      run: curl http://localhost:3000/health/db
+

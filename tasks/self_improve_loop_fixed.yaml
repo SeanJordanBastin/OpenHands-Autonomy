@@ -1,0 +1,33 @@
+task:
+  name: Enable Self-Improving GPT Feedback Loop
+  description: Allow the agent to learn by querying ChatGPT when stuck.
+  steps:
+    - name: Create learning log folder
+      run: mkdir -p logs/self_learn
+
+    - name: Add stub for learning script
+      run: |
+        cat > scripts/self_improve.py <<EOF
+        import openai
+        import os
+
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+
+        def ask_gpt(question):
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You're helping an AI agent improve its own code."},
+                    {"role": "user", "content": question}
+                ]
+            )
+            return response.choices[0].message["content"]
+
+        if __name__ == "__main__":
+            q = "Why did my agent fail to apply Alembic migration?"
+            print(ask_gpt(q))
+        EOF
+
+    - name: Run example learning loop
+      run: poetry run python scripts/self_improve.py
+

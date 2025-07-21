@@ -1,0 +1,16 @@
+task: "Agent Self-Writing Loop"
+
+steps:
+  - name: Prompt GPT to write a new YAML task
+    ask_gpt:
+      prompt: |
+        Write a new YAML task that helps the agent improve its ability to self-debug or self-generate logic.
+        Focus on improving the agent's planning ability and include a test step.
+
+  - name: Save it
+    run: |
+      echo "${previous_response}" > tasks/generated_by_agent.yaml
+
+  - name: Try to run it
+    run: poetry run python scripts/agent.py --task-file tasks/generated_by_agent.yaml
+

@@ -1,0 +1,86 @@
+task: "🛠️ Self-Healing Visual Validation Loop"
+
+vars:
+  max_retries: 5
+  retry_count: 0
+  screenshot_path: "./screenshots/output.png"
+  task_file_path: "./tasks/target_task.yaml"
+  task_name: "target_task.yaml"
+
+steps:
+
+  - name: 🟢 Run Initial Task
+    run: poetry run python scripts/agent.py --task-file ${task_file_path}
+
+  - name: 📸 Take Screenshot of Result
+    run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+
+  - name: 🧠 Ask GPT if Screenshot is ✅ or ❌
+    ask_gpt:
+      prompt: |
+        Here's a screenshot from a task we just ran: ${screenshot_path}
+        Based on the visual output, is this a ✅ success or ❌ failure?
+        Please respond with either:
+        - "✅" if it matches the task goal
+        - "❌" if it does not
+        Optionally include a short reasoning line.
+      image: ${screenshot_path}
+    save_response_as: gpt_verdict
+
+  - name: 🔁 Retry Loop if ❌
+    if: ${gpt_verdict} == "❌"
+    loop:
+      while: ${retry_count} < ${max_retries}
+      steps:
+        - name: 🛠️ Ask GPT to Fix the Broken Task File
+          ask_gpt:
+            prompt: |
+              Here's the YAML task file that failed: ${task_file_path}
+              Based on the failure seen in the last screenshot, please rewrite or fix this YAML so it succeeds.
+              Return only the fixed YAML.
+            files:
+              - ${task_file_path}
+            image: ${screenshot_path}
+          save_response_as: fixed_yaml
+
+        - name: 💾 Overwrite Task File with Fix
+          run: |
+            echo "${fixed_yaml}" > ${task_file_path}
+            echo "Fixed task saved."
+
+        - name: 🏃 Re-run Fixed Task
+          run: poetry run python scripts/agent.py --task-file ${task_file_path}
+
+        - name: 📸 Screenshot After Retry
+          run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+
+        - name: 🧠 Ask GPT if Retry Was ✅
+          ask_gpt:
+            prompt: |
+              Here’s the latest screenshot after fixing and retrying. Is this now ✅ or still ❌?
+            image: ${screenshot_path}
+          save_response_as: gpt_verdict
+
+        - name: ✅ Exit Loop if Success
+          if: ${gpt_verdict} == "✅"
+          run: echo "✅ Success achieved after retry #${retry_count}" && exit
+
+        - name: ➕ Increment Retry Count
+          run: |
+            export retry_count=$((retry_count + 1))
+
+  - name: 🧭 Ask GPT for a New Plan if Max Retries Hit
+    if: ${gpt_verdict} == "❌"
+    ask_gpt:
+      prompt: |
+        We’ve retried this task ${max_retries} times and it still failed. Can you take a step back, reassess the goal, and propose a new YAML task strategy that would better achieve it?
+        Please include reasoning and output a new working YAML file.
+      image: ${screenshot_path}
+    save_response_as: new_strategy_yaml
+
+  - name: 🆕 Save and Restart New Plan
+    run: |
+      echo "${new_strategy_yaml}" > ${task_file_path}
+      echo "New strategy saved. Restarting loop..."
+    rerun_task: true
+

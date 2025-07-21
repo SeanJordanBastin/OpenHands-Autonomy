@@ -1,0 +1,21 @@
+task: Nightly Self-Healing + Visual Chain
+description: >-
+  Runs the daily_chain.yaml task every night at 2:30 AM. Retries on failure,
+  logs results, and uses visual + YAML validation on all output.
+
+loop:
+  schedule: "30 2 * * *"  # 2:30 AM daily
+  max_retries: 2
+  retry_delay: 180  # seconds
+  on_failure:
+    - log: "Daily chain failed. Retrying..."
+    - retry
+
+steps:
+  - run_task_file: tasks/daily_chain.yaml
+  - check_output_for_errors: true
+  - validate_generated_yaml_files: true
+  - if_output_visual: true
+    then:
+      - run_task_file: tasks/verify_visual_output_with_gpt.yaml
+

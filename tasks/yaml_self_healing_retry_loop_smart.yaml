@@ -1,0 +1,83 @@
+task: "Smart YAML Self-Healing Retry Loop"
+
+vars:
+  task_to_heal: "./tasks/self_writing_loop.yaml"
+  max_retries: 3
+  retry_count: 0
+  screenshot_path: "./screenshots/self_writing_loop_result.png"
+
+steps:
+  - name: 🏃 Run Initial Task
+    run: poetry run python scripts/agent.py --task-file ${task_to_heal}
+    on_error: continue
+
+  - name: 📸 Screenshot After First Run
+    run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+
+  - name: 🧠 Ask GPT if Result is ✅
+    ask_gpt:
+      prompt: |
+        This is the output of running the task file: ${task_to_heal}
+        Based on the screenshot, is the result ✅ (success) or ❌ (failure)?
+        Only answer ✅ or ❌ with one short reasoning line.
+      image: ${screenshot_path}
+    save_response_as: gpt_verdict
+
+  - name: 🔁 Retry if GPT Says ❌
+    if: ${gpt_verdict} == "❌"
+    loop:
+      while: ${retry_count} < ${max_retries}
+      steps:
+        - name: 🧠 Ask GPT to Fix the YAML
+          ask_gpt:
+            prompt: |
+              The task file ${task_to_heal} failed to run.
+              Please return a complete, corrected YAML for this file.
+              Make sure the YAML is fully valid.
+              Include no explanations — just return raw YAML.
+            files:
+              - ${task_to_heal}
+            image: ${screenshot_path}
+          save_response_as: fixed_yaml
+
+        - name: 💾 Overwrite Broken YAML with Fix
+          run: echo "${fixed_yaml}" > ${task_to_heal}
+
+        - name: 🏃 Re-run Task After Fix
+          run: poetry run python scripts/agent.py --task-file ${task_to_heal}
+          on_error: continue
+
+        - name: 📸 Take Screenshot After Retry
+          run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+
+        - name: 🧠 Ask GPT Again if Fixed
+          ask_gpt:
+            prompt: |
+              Is the result now ✅ or still ❌?
+              Use the screenshot to verify.
+            image: ${screenshot_path}
+          save_response_as: gpt_verdict
+
+        - name: ✅ Exit Retry if Fixed
+          if: ${gpt_verdict} == "✅"
+          run: echo "🎉 Success confirmed by GPT!" && break
+
+        - name: ➕ Increment Retry Count
+          run: export retry_count=$((retry_count + 1))
+
+  - name: 🧠 Ask GPT for New Plan if Still ❌
+    if: ${gpt_verdict} == "❌"
+    ask_gpt:
+      prompt: |
+        After ${max_retries} attempts, the task file ${task_to_heal} is still failing.
+        Please propose a new working version of this YAML from scratch that achieves the same goal.
+        Return only valid YAML — no commentary.
+      image: ${screenshot_path}
+    save_response_as: new_yaml
+
+  - name: 💾 Save New Plan and Restart
+    if: ${gpt_verdict} == "❌"
+    run: |
+      echo "${new_yaml}" > ${task_to_heal}
+      echo "🔁 New strategy written to ${task_to_heal}"
+

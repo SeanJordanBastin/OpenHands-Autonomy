@@ -1,0 +1,34 @@
+task: Nightly GitHub Sync and GPT Update
+
+description: >
+  Every night, JARVIS will push all code changes to GitHub,
+  notify GPT of updates via a flag file, and auto-create a pull request
+  if new improvements are detected.
+
+steps:
+  - name: Commit all new and changed files
+    shell: |
+      git add .
+      git commit -m "🤖 Nightly sync: JARVIS auto-commit $(date)" || echo "Nothing to commit"
+
+  - name: Push changes to GitHub
+    shell: |
+      git push origin main || echo "No changes to push"
+
+  - name: Notify GPT system of updates
+    shell: |
+      echo "JARVIS update pushed on $(date)" > .gpt_flag
+
+  - name: Create pull request if improvements exist (optional)
+    shell: |
+      git fetch origin
+      git diff origin/main > nightly_diff.patch
+      if [ -s nightly_diff.patch ]; then
+        echo "🚀 Improvements detected, preparing pull request..."
+        # Replace with your GitHub CLI PR command or leave manual:
+        # gh pr create --title "Nightly Improvements by JARVIS" --body "Auto-synced changes"
+      else
+        echo "✅ No significant improvements to PR."
+      fi
+    continue_on_error: true
+

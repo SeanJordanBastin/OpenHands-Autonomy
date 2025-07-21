@@ -1,0 +1,93 @@
+task:
+  name: start_full_stack_agent_controlled
+  steps:
+  - run:
+      name: start_full_stack_agent_controlled
+      steps:
+      - name: Ensure required folders exist
+        run: 'mkdir -p scripts
+
+          mkdir -p tasks
+
+          '
+      - name: Fix broken YAML files
+        run: 'python scripts/yaml_sanitizer.py --path tasks/
+
+          '
+      - name: Write Docker Compose file
+        run: "cat > docker-compose.yml <<EOF\nversion: \"3.9\"\nservices:\n  backend:\n\
+          \    build: ./backend\n    ports:\n      - \"3001:3001\"\n    volumes:\n\
+          \      - ./backend:/app\n    command: poetry run python main.py\n\n  frontend:\n\
+          \    build: ./frontend\n    ports:\n      - \"5173:5173\"\n    volumes:\n\
+          \      - ./frontend:/app\n    command: npm run dev\n\n  agent:\n    build:\
+          \ ./openhands\n    volumes:\n      - ./openhands:/app\n    command: poetry\
+          \ run python scripts/agent.py --task-file tasks/start_full_stack_agent_controlled.yaml\n\
+          EOF\n"
+      - name: Write backend Dockerfile
+        run: 'cat > backend/Dockerfile <<EOF
+
+          FROM python:3.10
+
+          WORKDIR /app
+
+          COPY . .
+
+          RUN pip install poetry && poetry install
+
+          CMD ["poetry", "run", "python", "main.py"]
+
+          EOF
+
+          '
+      - name: Write frontend Dockerfile
+        run: 'cat > frontend/Dockerfile <<EOF
+
+          FROM node:18
+
+          WORKDIR /app
+
+          COPY . .
+
+          RUN npm install
+
+          CMD ["npm", "run", "dev"]
+
+          EOF
+
+          '
+      - name: Write agent Dockerfile
+        run: 'cat > openhands/Dockerfile <<EOF
+
+          FROM python:3.10
+
+          WORKDIR /app
+
+          COPY . .
+
+          RUN pip install poetry && poetry install
+
+          CMD ["poetry", "run", "python", "scripts/agent.py", "--task-file", "tasks/start_full_stack_agent_controlled.yaml"]
+
+          EOF
+
+          '
+      - name: Write startup shell script
+        run: "cat > scripts/start_all.sh <<EOF\n#!/bin/bash\necho \"\U0001F680 Starting\
+          \ Docker Compose full stack...\"\n\ndocker-compose down\ndocker-compose\
+          \ build\ndocker-compose up -d\n\necho \"\u2705 All containers launched.\
+          \ Monitoring logs...\"\ndocker-compose logs -f\nEOF\nchmod +x scripts/start_all.sh\n"
+      - name: Start Docker Compose stack
+        run: './scripts/start_all.sh || echo "Startup failed. Retrying..."
+
+          '
+      - name: Monitor frontend and backend startup
+        run: "curl --fail http://localhost:3001 || echo \"\u274C Backend not ready\"\
+          \ncurl --fail http://localhost:5173 || echo \"\u274C Frontend not ready\"\
+          \n"
+      - name: Retry if failures detected
+        run: "if ! curl --fail http://localhost:3001 || ! curl --fail http://localhost:5173;\
+          \ then\n  echo \"\U0001F501 Retrying full startup...\"\n  ./scripts/start_all.sh\n\
+          fi\n"
+      - name: Confirm agent loop is alive
+        run: "ps aux | grep agent.py | grep -v grep || echo \"\u274C Agent not running\"\
+          \n"

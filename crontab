@@ -1,0 +1,2 @@
+0 2 * * * cd /path/to/OpenHands-main && poetry run python scripts/agent.py --task-file tasks/daily_chain.yaml >> ~/agent_daily.log 2>&1
+

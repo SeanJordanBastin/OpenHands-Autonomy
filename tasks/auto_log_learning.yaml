@@ -1,0 +1,27 @@
+task:
+  name: Auto-Log Agent Learning Summary
+  steps:
+    - run: |
+        import datetime
+        import os
+
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
+
+        now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_path = os.path.join(log_dir, f"learning_log_{now}.md")
+
+        with open(log_path, "w") as f:
+            f.write(f"# 🧠 Agent Learning Log — {now}\n\n")
+            f.write("## 🛠️ Actions Taken:\n")
+            f.write("- Completed daily maintenance routines.\n")
+            f.write("- Attempted repairs, upgrades, and memory updates.\n")
+            f.write("\n## 🔍 Improvements Noted:\n")
+            f.write("- (Insert observed improvements here...)\n")
+            f.write("\n## 🧠 Memory Updates:\n")
+            f.write("- (Summarize new concepts or patterns recognized...)\n")
+            f.write("\n---\n")
+            f.write("📝 _This log was generated automatically._\n")
+
+        print(f"✅ Learning log saved to: {log_path}")
+

@@ -1,0 +1,4 @@
+tasks:
+  - description: "Echo test"
+    command: "echo Hello from the agent!"
+

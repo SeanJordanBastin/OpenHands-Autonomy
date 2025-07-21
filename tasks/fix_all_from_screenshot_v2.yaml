@@ -1,0 +1,82 @@
+task: "Fix YAML Failures from Screenshot (Smart Retry Loop)"
+
+vars:
+  terminal_screenshot: "./screenshots/Screenshot_2025-07-21_at_7.30.52_PM.png"
+  task_dir: "./tasks/"
+  max_retries: 3
+
+steps:
+
+  - name: 🧠 Extract Failed YAMLs from Screenshot and Fix Them
+    ask_gpt:
+      prompt: |
+        This is a screenshot showing which YAML files failed to parse in the terminal.
+        🔍 Your task:
+        1. Extract **each YAML filename** that failed and why.
+        2. For each, provide a corrected YAML version that fixes the issue.
+        3. Return as valid JSON in the format:
+
+        [
+          {
+            "filename": "tasks/example.yaml",
+            "reason": "Missing ':'",
+            "fixed_yaml": "<the fixed YAML>"
+          },
+          ...
+        ]
+
+        If any are missing essential fields, add what is needed for the task to make sense.
+      image: ${terminal_screenshot}
+    save_response_as: yaml_fixes
+
+  - name: 💾 Save Fixed YAMLs to Files
+    loop:
+      for_each: ${yaml_fixes}
+      steps:
+        - name: Save to Disk
+          run: |
+            echo "${item.fixed_yaml}" > ${item.filename}
+            echo "✅ Saved fixed: ${item.filename}"
+
+  - name: 🔁 Test and Validate Each Fix
+    loop:
+      for_each: ${yaml_fixes}
+      steps:
+        - name: Retry Loop for ${item.filename}
+          loop:
+            while: ${retry_count} < ${max_retries}
+            steps:
+              - name: Run Task
+                run: poetry run python scripts/agent.py --task-file ${item.filename}
+                on_error: continue
+
+              - name: Take Screenshot
+                run: python scripts/utils/take_screenshot.py --output ./screenshots/${item.filename}_result.png
+
+              - name: Ask GPT if Fix Succeeded
+                ask_gpt:
+                  prompt: |
+                    This is the result of running the fixed YAML task: ${item.filename}
+                    ✅ = success. ❌ = still failing.
+                    Give a verdict and a YAML fix if ❌.
+                  image: ./screenshots/${item.filename}_result.png
+                save_response_as: verdict
+
+              - name: Exit if ✅
+                if: ${verdict} == "✅"
+                run: echo "🎉 ${item.filename} fixed!" && break
+
+              - name: Apply GPT Fix If ❌
+                if: ${verdict} == "❌"
+                ask_gpt:
+                  prompt: |
+                    The previous fix still failed. Please give a better version of ${item.filename}.
+                    Return just the YAML.
+                save_response_as: retry_yaml
+
+              - name: Overwrite with New Retry Fix
+                run: echo "${retry_yaml}" > ${item.filename}
+
+              - name: Increment Retry Count
+                run: export retry_count=$((retry_count + 1))
+

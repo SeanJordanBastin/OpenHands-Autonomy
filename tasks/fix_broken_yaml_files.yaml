@@ -1,0 +1,69 @@
+task: "Overwrite Broken YAML Files with Fixed Versions"
+
+vars:
+  task_dir: "./tasks/"
+
+steps:
+  - name: 💾 Overwrite enable_auto_yaml_fixing.yaml
+    run: |
+      cat <<EOF > ${task_dir}enable_auto_yaml_fixing.yaml
+task: "Enable Auto YAML Fixing"
+
+steps:
+  - name: Enable auto-fix mode
+    run: export ENABLE_YAML_AUTO_FIXING=true
+
+  - name: Run fixer loop
+    run: poetry run python scripts/agent.py --task-file tasks/yaml_self_healing_loop_continuous_wrapped.yaml
+
+  - name: Confirm fixer enabled
+    ask_gpt:
+      prompt: |
+        Auto YAML fixing mode has been enabled. Confirm this was successful and return ✅ or ❌ based on the expected agent behavior.
+EOF
+
+  - name: 💾 Overwrite self_writing_loop.yaml
+    run: |
+      cat <<EOF > ${task_dir}self_writing_loop.yaml
+task: "Agent Self-Writing Loop"
+
+steps:
+  - name: Prompt GPT to write a new YAML task
+    ask_gpt:
+      prompt: |
+        Write a new YAML task that helps the agent improve its ability to self-debug or self-generate logic.
+        Focus on improving the agent's planning ability and include a test step.
+
+  - name: Save it
+    run: |
+      echo "\${previous_response}" > tasks/generated_by_agent.yaml
+
+  - name: Try to run it
+    run: poetry run python scripts/agent.py --task-file tasks/generated_by_agent.yaml
+EOF
+
+  - name: 💾 Overwrite verify_visual_output_with_gpt.yaml
+    run: |
+      cat <<EOF > ${task_dir}verify_visual_output_with_gpt.yaml
+task: "Verify Screenshot Output With GPT"
+
+vars:
+  screenshot_path: "./screenshots/output.png"
+
+steps:
+  - name: Take screenshot of result
+    run: python scripts/utils/take_screenshot.py --output \${screenshot_path}
+
+  - name: Ask GPT to confirm visual output is ✅
+    ask_gpt:
+      prompt: |
+        This screenshot shows the current result of running the task.
+        ✅ if it matches the expected UI or behavior.
+        ❌ if it is wrong or broken. Explain why.
+      image: \${screenshot_path}
+    save_response_as: visual_verdict
+
+  - name: Output verdict
+    run: echo "GPT visual verdict: \${visual_verdict}"
+EOF
+

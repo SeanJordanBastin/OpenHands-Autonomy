@@ -1,0 +1,54 @@
+task: implement_chat_ui
+description: Replace default Vite app with a basic agent chat UI.
+steps:
+  - name: Replace App.jsx with chat UI
+    run: |
+      cat << 'EOF' > src/App.jsx
+      import { useState } from 'react';
+
+      function App() {
+        const [messages, setMessages] = useState([]);
+        const [input, setInput] = useState('');
+
+        const sendMessage = () => {
+          if (!input.trim()) return;
+          const userMessage = { role: 'user', content: input };
+          setMessages([...messages, userMessage]);
+          setInput('');
+        };
+
+        return (
+          <div className="flex flex-col h-screen">
+            <div className="flex-1 overflow-y-auto p-4">
+              {messages.map((msg, index) => (
+                <div key={index} className="mb-2">
+                  <strong>{msg.role}:</strong> {msg.content}
+                </div>
+              ))}
+            </div>
+            <div className="flex p-4 bg-white border-t">
+              <input
+                className="flex-grow border rounded px-3 py-2 mr-2"
+                type="text"
+                placeholder="Say something..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              />
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded"
+                onClick={sendMessage}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      export default App;
+      EOF
+
+  - name: Restart Vite server
+    run: npm run dev
+

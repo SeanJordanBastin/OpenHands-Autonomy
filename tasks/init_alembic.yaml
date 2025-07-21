@@ -1,0 +1,32 @@
+task:
+  name: Init Alembic
+  description: Initialises Alembic for OpenHands project
+  steps:
+    - name: Init Alembic
+      description: Initialize migrations directory
+      run: poetry run alembic init openhands/migrations
+
+    - name: Update Alembic Path
+      description: Fix script_location path
+      edit:
+        path: alembic.ini
+        find: "^script_location = .*$"
+        replace: "script_location = openhands/migrations"
+
+    - name: Inject Base
+      description: Inject target_metadata in env.py
+      edit:
+        path: openhands/migrations/env.py
+        find: "target_metadata = None"
+        replace: |
+          from openhands.models import Base
+          target_metadata = Base.metadata
+
+    - name: Create Initial Migration
+      description: Generate initial migration script
+      run: poetry run alembic revision --autogenerate -m "Initial"
+
+    - name: Upgrade DB
+      description: Apply migration
+      run: poetry run alembic upgrade head
+

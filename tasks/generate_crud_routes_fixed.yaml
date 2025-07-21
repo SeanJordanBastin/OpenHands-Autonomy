@@ -1,0 +1,45 @@
+task:
+  name: Generate CRUD API for Project Model
+  description: Build full CRUD endpoints and schema for a model.
+  steps:
+    - name: Create Project schema
+      run: |
+        mkdir -p app/schemas && cat > app/schemas/project.py <<EOF
+        from pydantic import BaseModel
+
+        class ProjectBase(BaseModel):
+            name: str
+
+        class ProjectCreate(ProjectBase):
+            pass
+
+        class Project(ProjectBase):
+            id: int
+
+            class Config:
+                orm_mode = True
+        EOF
+
+    - name: Create Project route
+      run: |
+        mkdir -p app/routes && cat > app/routes/project.py <<EOF
+        from fastapi import APIRouter, Depends
+        from sqlalchemy.orm import Session
+        from app.db import get_db
+        from app.schemas.project import Project, ProjectCreate
+
+        router = APIRouter()
+
+        @router.get("/projects")
+        def read_projects(db: Session = Depends(get_db)):
+            return [{"id": 1, "name": "Sample Project"}]
+        EOF
+
+    - name: Register Project route
+      edit:
+        path: app/main.py
+        find: "# INSERT ROUTES HERE"
+        replace: |
+          from app.routes import project
+          app.include_router(project.router)
+

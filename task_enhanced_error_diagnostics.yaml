@@ -1,0 +1,46 @@
+task:
+  id: enhanced_error_diagnostics
+  description: >
+    Classify errors by complexity (simple vs complex) by parsing historical logs 
+    and store results in error_classification.json.
+  steps:
+    - step: Load historical repair log (repair_log.json).
+      action: file.read
+      params:
+        filepath: "./repair_log.json"
+
+    - step: Parse each logged error message.
+      action: code.run
+      params:
+        language: python
+        script: |
+          import json, re
+
+          with open('./repair_log.json', 'r') as f:
+              repairs = json.load(f)
+
+          classification = {}
+          simple_patterns = [r"indentation error", r"syntax error", r"missing key", r"unexpected character"]
+
+          for entry_id, entry in repairs.items():
+              error_msg = entry['error']
+              complexity = "Complex"
+              for pattern in simple_patterns:
+                  if re.search(pattern, error_msg, re.IGNORECASE):
+                      complexity = "Simple"
+                      break
+              classification[entry_id] = {
+                  "error": error_msg,
+                  "complexity": complexity
+              }
+
+          with open('./error_classification.json', 'w') as f:
+              json.dump(classification, f, indent=2)
+
+          print("Error classification complete. Results stored in error_classification.json.")
+
+    - step: Verify classification log was created successfully.
+      action: file.exists
+      params:
+        filepath: "./error_classification.json"
+

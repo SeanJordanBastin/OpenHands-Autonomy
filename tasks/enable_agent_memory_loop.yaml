@@ -1,0 +1,75 @@
+task: enable_agent_memory_loop
+description: Give the agent long-term memory by storing observations, successes, and failures in a persistent JSON + SQLite memory module.
+steps:
+  - name: Initialize memory module
+    uses: python
+    run: |
+      import os, sqlite3, json
+      os.makedirs("memory", exist_ok=True)
+      if not os.path.exists("memory/context.json"):
+          with open("memory/context.json", "w") as f:
+              json.dump({"history": [], "lessons": []}, f)
+
+      conn = sqlite3.connect("memory/memory.sqlite")
+      c = conn.cursor()
+      c.execute('''CREATE TABLE IF NOT EXISTS thoughts
+                   (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, message TEXT)''')
+      conn.commit()
+      conn.close()
+
+  - name: Log current thinking
+    uses: python
+    run: |
+      from datetime import datetime
+      import sqlite3
+      conn = sqlite3.connect("memory/memory.sqlite")
+      c = conn.cursor()
+      c.execute("INSERT INTO thoughts (timestamp, message) VALUES (?, ?)",
+                (datetime.utcnow().isoformat(), "Memory system initialized and loop started"))
+      conn.commit()
+      conn.close()
+
+  - name: Recall past lessons
+    uses: python
+    run: |
+      import json
+      with open("memory/context.json", "r") as f:
+          memory = json.load(f)
+      context["memory_history"] = memory.get("history", [])
+      context["lessons"] = memory.get("lessons", [])
+
+  - name: Reflect and save new lesson
+    uses: chatgpt
+    inputs:
+      model: gpt-4o
+      messages:
+        - role: system
+          content: |
+            You are reflecting on the agent's development journey.
+            Based on what it's done so far and what failed, generate 1 new useful long-term lesson to remember.
+            Format it as a short quote with a label, like: {"label": "YAML Pattern", "quote": "Always use quoted scalars on multi-line YAML strings."}
+        - role: user
+          content: |
+            Previous lessons: {{lessons}}
+            Current issues: self_directed loop is running, but test_break and upgrade_agent_full_auto are failing.
+    outputs:
+      save: lesson_generated
+
+  - name: Append lesson to memory
+    uses: python
+    run: |
+      import json
+      path = "memory/context.json"
+      with open(path, "r") as f:
+          memory = json.load(f)
+      memory.setdefault("lessons", []).append(lesson_generated)
+      with open(path, "w") as f:
+          json.dump(memory, f, indent=2)
+
+  - name: Loop memory update
+    uses: shell
+    run: |
+      echo "Sleeping 60 seconds... then refreshing memory loop"
+      sleep 60
+      poetry run python scripts/agent.py --task-file tasks/enable_agent_memory_loop.yaml
+

@@ -1,0 +1,46 @@
+task:
+  name: upgrade_agent_gpt_fix_all
+  steps:
+  - run:
+      steps:
+      - action: insert_import
+        details: from pathlib import Path
+        file: start_agent_safely.py
+        name: Add missing `Path` import
+      - action: replace
+        file: start_agent_safely.py
+        name: Fix OpenAI client syntax
+        pattern: openai.ChatCompletion.create\(
+        replacement: 'client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+          response = client.chat.completions.create(
+
+          '
+      - action: prepend
+        content: "if not os.getenv(\"OPENAI_API_KEY\"):\n    raise EnvironmentError(\"\
+          OPENAI_API_KEY environment variable not set.\")\n"
+        file: start_agent_safely.py
+        name: Check for OPENAI_API_KEY and raise error if not set
+      - action: append
+        content: "def fix_all_yaml_tasks():\n    tasks_fixed = []\n    memory = load_memory()\n\
+          \n    for file in Path(TASKS_DIR).glob(\"*.yaml\"):\n        with open(file,\
+          \ \"r\") as f:\n            content = f.read()\n\n        if is_yaml_valid(content):\n\
+          \            print(f\"\u2705 Valid \u2192 {file}\")\n            continue\n\
+          \n        print(f\"\u274C Invalid \u2192 {file}\")\n        try:\n     \
+          \       response = client.chat.completions.create(\n                model=\"\
+          gpt-4\",\n                messages=[\n                    {\"role\": \"\
+          system\", \"content\": \"You are an AI that fixes broken YAML syntax.\"\
+          },\n                    {\"role\": \"user\", \"content\": f\"Please fix\
+          \ this YAML:\\n{content}\"}\n                ]\n            )\n        \
+          \    fixed_yaml = response.choices[0].message.content\n\n            # Save\
+          \ backup\n            backup_path = Path(BACKUP_DIR) / file.name.replace(\"\
+          .yaml\", \"_fixed.yaml\")\n            with open(backup_path, \"w\") as\
+          \ f:\n                f.write(fixed_yaml)\n\n            print(f\"\U0001F6E0\
+          \uFE0F Fixed \u2192 {file} \u2192 saved to {backup_path}\")\n          \
+          \  memory[str(file)] = {\"fixed_at\": str(datetime.now())}\n           \
+          \ tasks_fixed.append(file)\n\n        except Exception as e:\n         \
+          \   print(f\"\u274C GPT fix failed \u2192 {file}: {e}\")\n\n    save_memory(memory)\n\
+          \    return tasks_fixed\n\nfix_all_yaml_tasks()\n"
+        file: start_agent_safely.py
+        name: Loop through all .yaml files and attempt GPT healing
+      task: Upgrade Agent YAML Repair Capabilities

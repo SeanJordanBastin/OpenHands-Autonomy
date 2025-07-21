@@ -1,0 +1,7 @@
+task:
+  name: test_task
+  steps:
+  - run:
+      tasks:
+      - command: echo Hello from the agent!
+        description: Echo test

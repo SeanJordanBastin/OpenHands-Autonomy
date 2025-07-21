@@ -1,0 +1,42 @@
+task: GitHub Sync and GPT Intelligence Boost
+goals:
+  - Connect JARVIS to GitHub using your token.
+  - Push all OpenHands code to a private GitHub repo.
+  - Grant JARVIS push/pull access.
+  - Enable JARVIS + ChatGPT syncing via nightly loop.
+steps:
+  - name: Load GitHub credentials
+    command: |
+      echo "🔐 Loading GitHub token..."
+      export GITHUB_TOKEN=$(cat ~/.jarvis/github_token.txt)
+
+  - name: Create private repo (OpenHands-Autonomy)
+    command: |
+      echo "📁 Checking/creating repo..."
+      gh repo view seanbastin/OpenHands-Autonomy || gh repo create OpenHands-Autonomy --private --confirm
+
+  - name: Init Git if needed
+    command: |
+      git init || true
+      git remote add origin https://github.com/seanbastin/OpenHands-Autonomy.git || true
+
+  - name: Commit and push
+    command: |
+      git add .
+      git commit -m '🔄 Initial JARVIS sync'
+      git push -u origin main
+
+  - name: Save token for future
+    command: |
+      echo "$GITHUB_TOKEN" > ~/.jarvis/github_token.txt
+      chmod 600 ~/.jarvis/github_token.txt
+
+  - name: Enable GPT sync
+    command: |
+      mkdir -p .jarvis/intel
+      echo 'GPT_ACCESS_GRANTED=1' > .jarvis/intel/access.flag
+
+  - name: Schedule nightly job
+    command: |
+      echo "30 2 * * * cd $(pwd) && poetry run python scripts/agent.py --task-file tasks/nightly_review.yaml" | crontab -
+

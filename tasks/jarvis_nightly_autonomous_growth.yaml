@@ -1,0 +1,63 @@
+task: jarvis_nightly_autonomous_growth
+description: >
+  JARVIS absorbs all data, logs, and knowledge, improves her logic and reasoning,
+  practices algorithm design, downloads relevant info, queries GPT when stuck, evolves,
+  and writes a markdown growth summary report every night.
+
+steps:
+  - name: Load recent logs and task files
+    action: read_and_index
+    params:
+      paths:
+        - logs/
+        - tasks/
+        - fixed_backups/
+        - .openhands/microagents/
+        - .openhands/setup.sh
+        - README.md
+
+  - name: Analyze learning gaps and define new growth goals
+    action: gpt_query
+    params:
+      prompt: |
+        Based on my current knowledge and logs, what new skills or logic patterns
+        should I learn or refine tonight to become a smarter autonomous agent?
+
+  - name: Practice reasoning and debugging
+    action: run_simulated_tasks
+    params:
+      mode: training
+      number_of_tasks: 3
+
+  - name: Self-improve algorithms and logic
+    action: refactor_internal_logic
+    params:
+      targets:
+        - scripts/agent.py
+        - agent/core.py
+        - agent/memory.py
+
+  - name: Learn from GPT when unsure
+    action: query_gpt_when_stuck
+    params:
+      topics: [AI reasoning, Python debugging, YAML correction, learning autonomy]
+
+  - name: Generate daily growth report
+    action: write_file
+    params:
+      path: logs/jarvis_growth_report_{{today}}.md
+      contents: |
+        🧠 **JARVIS Nightly Growth Summary – {{today}}**
+
+        ✅ Tasks reviewed:  ✅ Logs read:  ✅ Code improved:
+        🔍 New logic learned:
+        🤖 GPT interactions:
+        📈 Upgraded internal skills:
+        🧭 Next learning goals:
+        💡 Thoughts: (auto-generated reflections)
+
+  - name: Schedule tomorrow’s run
+    action: reschedule_self
+    params:
+      time: "2:30"
+

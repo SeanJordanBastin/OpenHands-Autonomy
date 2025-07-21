@@ -1,0 +1,25 @@
+task: bootstrap_jarvis
+steps:
+  - name: Run JARVIS Nightly Growth Task Immediately
+    description: Trigger her nightly growth and learning routine manually
+    run: |
+      poetry run python scripts/agent.py --task-file tasks/jarvis_nightly_autonomous_growth.yaml
+
+  - name: Schedule JARVIS Nightly Growth via Crontab
+    description: Automatically add 2:30am cronjob if not already present
+    shell: |
+      CRON_JOB="30 2 * * * cd /Users/seanbastin/Downloads/OpenHands-main && poetry run python scripts/agent.py --task-file tasks/jarvis_nightly_autonomous_growth.yaml >> logs/jarvis_nightly.log 2>&1"
+
+      # Avoid duplicates
+      (crontab -l 2>/dev/null | grep -v jarvis_nightly_autonomous_growth.yaml; echo "$CRON_JOB") | crontab -
+
+  - name: Confirm Scheduled Task Exists
+    shell: crontab -l | grep jarvis_nightly_autonomous_growth.yaml || echo "❌ JARVIS nightly growth task NOT found in crontab!"
+
+  - name: Report Success to Log
+    shell: |
+      echo "✅ JARVIS bootstrapped herself at $(date)." >> logs/jarvis_nightly.log
+
+  - name: Print Final Confirmation
+    echo: "🚀 JARVIS has been successfully initialized, evolved, and self-scheduled for nightly growth."
+

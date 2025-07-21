@@ -1,0 +1,14 @@
+task: "Enable Auto YAML Fixing"
+
+steps:
+  - name: Enable auto-fix mode
+    run: export ENABLE_YAML_AUTO_FIXING=true
+
+  - name: Run fixer loop
+    run: poetry run python scripts/agent.py --task-file tasks/yaml_self_healing_loop_continuous_wrapped.yaml
+
+  - name: Confirm fixer enabled
+    ask_gpt:
+      prompt: |
+        Auto YAML fixing mode has been enabled. Confirm this was successful and return ✅ or ❌ based on the expected agent behavior.
+

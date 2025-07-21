@@ -1,0 +1,97 @@
+task:
+  name: Build Functional Chat UI Page
+  description: Let users interact with the agent at http://localhost:3000/chat
+  steps:
+    - name: Create Chat UI page file
+      run: |
+        mkdir -p frontend/src/pages
+        cat > frontend/src/pages/Chat.jsx << 'EOF'
+        import React, { useState, useEffect, useRef } from 'react';
+
+        const Chat = () => {
+          const [messages, setMessages] = useState([]);
+          const [input, setInput] = useState('');
+          const messagesEndRef = useRef(null);
+
+          const sendMessage = async () => {
+            if (!input.trim()) return;
+            const userMessage = { sender: 'user', text: input };
+            setMessages((prev) => [...prev, userMessage]);
+            setInput('');
+
+            const res = await fetch('/api/agent/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: input }),
+            });
+
+            const data = await res.json();
+            const botMessage = { sender: 'ai', text: data.reply };
+            setMessages((prev) => [...prev, botMessage]);
+          };
+
+          const handleKeyDown = (e) => {
+            if (e.key === 'Enter') sendMessage();
+          };
+
+          useEffect(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, [messages]);
+
+          return (
+            <div style={{ padding: '1rem', maxWidth: '600px', margin: 'auto' }}>
+              <h2>🧠 Agent Chat</h2>
+              <div
+                style={{
+                  border: '1px solid #ccc',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  height: '400px',
+                  overflowY: 'scroll',
+                  marginBottom: '1rem',
+                  background: '#f9f9f9'
+                }}
+              >
+                {messages.map((msg, idx) => (
+                  <div key={idx} style={{ marginBottom: '1rem' }}>
+                    <strong>{msg.sender === 'user' ? 'You' : 'Agent'}:</strong> {msg.text}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message..."
+                style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
+              />
+            </div>
+          );
+        };
+
+        export default Chat;
+        EOF
+
+    - name: Register Chat route
+      edit:
+        path: frontend/src/root.tsx
+        find: "<Routes>"
+        replace: |
+          <Routes>
+            <Route path="/chat" element={<Chat />} />
+
+    - name: Import Chat page
+      edit:
+        path: frontend/src/root.tsx
+        find: "import { Route } from 'react-router-dom';"
+        replace: |
+          import { Route } from 'react-router-dom';
+          import Chat from './pages/Chat';
+
+    - name: Run the frontend server
+      run: |
+        cd frontend
+        npm run dev
+

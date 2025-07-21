@@ -1,0 +1,24 @@
+task:
+  name: fix_all_yaml_with_gpt_loop
+  steps:
+  - run:
+      name: fix_all_yaml_with_gpt_loop
+      steps:
+      - name: Fix all broken YAMLs via sanitizer or GPT
+        run: "echo \"\U0001F6E0\uFE0F Starting YAML fix cycle...\"\n\n# Attempt sanitize,\
+          \ fallback to GPT fix\nfor file in \\\n  self_heal_with_chatgpt.yaml \\\n\
+          \  test_break.yaml \\\n  upgrade_agent_full_auto.yaml \\\n  enable_auto_yaml_fixing.yaml\
+          \ \\\n  self_writing_loop.yaml; do\n\n  echo \"\U0001F50D Checking tasks/$file...\"\
+          \n  python scripts/yaml_sanitizer.py --path tasks/$file || \\\n  poetry\
+          \ run python scripts/ask_gpt_fix.py --file tasks/$file\ndone\n"
+      - name: Retry YAML fixes until valid
+        run: "echo \"\U0001F501 Verifying all YAMLs are now valid...\"\n\nfor file\
+          \ in \\\n  self_heal_with_chatgpt.yaml \\\n  test_break.yaml \\\n  upgrade_agent_full_auto.yaml\
+          \ \\\n  enable_auto_yaml_fixing.yaml \\\n  self_writing_loop.yaml; do\n\n\
+          \  echo \"\U0001F50E Validating tasks/$file...\"\n  while ! python scripts/yaml_sanitizer.py\
+          \ --path tasks/$file; do\n    echo \"\U0001F6A8 $file still broken. Asking\
+          \ GPT for help...\"\n    poetry run python scripts/ask_gpt_fix.py --file\
+          \ tasks/$file\n  done\n  echo \"\u2705 $file is now fixed!\"\ndone\n"
+      - name: Confirm success
+        run: "echo \"\U0001F389 All YAML tasks are repaired and validated.\"\n"
+      task: fix_all_yaml_with_gpt_loop

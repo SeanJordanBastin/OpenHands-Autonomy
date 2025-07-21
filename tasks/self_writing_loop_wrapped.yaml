@@ -1,0 +1,42 @@
+task:
+  name: self_writing_loop
+  steps:
+  - run:
+      steps:
+      - name: Run Python Self-Healing Script
+        run: "import os\nimport subprocess\nimport openai\nfrom datetime import datetime\n\
+          \nopenai.api_key = os.getenv(\"OPENAI_API_KEY\")\nBACKUP_DIR = \"fixed_backups\"\
+          \nos.makedirs(BACKUP_DIR, exist_ok=True)\n\ndef ask_gpt_for_fix(filename,\
+          \ error):\n    with open(filename, \"r\") as f:\n        broken_code = f.read()\n\
+          \n    prompt = (\n        \"You are an AI repair agent.\\n\"\n        f\"\
+          The following file encountered an error while executing: {filename}\\n\\\
+          n\"\n        f\"Error:\\n{error}\\n\\n\"\n        \"Here is the broken code:\\\
+          n\"\n        \"```python\\n\"\n        f\"{broken_code}\\n\"\n        \"\
+          ```\"\n    )\n\n    response = openai.ChatCompletion.create(\n        model=\"\
+          gpt-4\",\n        messages=[{\"role\": \"user\", \"content\": prompt}],\n\
+          \        temperature=0\n    )\n    return response[\"choices\"][0][\"message\"\
+          ][\"content\"].strip()\n\ndef backup_and_replace(filename, new_content):\n\
+          \    timestamp = datetime.now().strftime(\"%Y%m%d_%H%M%S\")\n    backup_path\
+          \ = os.path.join(BACKUP_DIR, f\"{os.path.basename(filename)}.{timestamp}\"\
+          )\n    with open(filename, \"r\") as f:\n        original = f.read()\n \
+          \   with open(backup_path, \"w\") as f:\n        f.write(original)\n   \
+          \ with open(filename, \"w\") as f:\n        f.write(new_content)\n    print(f\"\
+          \U0001F9E0 Backup saved \u2192 {backup_path}\")\n    print(f\"\u2705 File\
+          \ updated \u2192 {filename}\")\n\ndef run_task():\n    try:\n        subprocess.run([\"\
+          poetry\", \"run\", \"python\", \"scripts/agent.py\"], check=True)\n    \
+          \    return True\n    except subprocess.CalledProcessError as e:\n     \
+          \   print(\"\U0001F525 Agent crashed. Asking GPT to fix it...\")\n     \
+          \   error_msg = str(e)\n        if \"File\" in error_msg and \".py\" in\
+          \ error_msg:\n            lines = error_msg.split(\"\\n\")\n           \
+          \ for line in lines:\n                if \"File\" in line and \".py\" in\
+          \ line:\n                    parts = line.strip().split(\"\\\"\")\n    \
+          \                if len(parts) >= 2:\n                        broken_file\
+          \ = parts[1]\n                        print(f\"\U0001F340 File to fix: {broken_file}\"\
+          )\n                        fixed_code = ask_gpt_for_fix(broken_file, error_msg)\n\
+          \                        backup_and_replace(broken_file, fixed_code)\n \
+          \                       return False\n        return False\n\nmax_attempts\
+          \ = 3\nfor attempt in range(1, max_attempts + 1):\n    print(f\"\U0001F4AB\
+          \ Attempt {attempt}\")\n    if run_task():\n        print(\"\u2705 Task\
+          \ completed successfully.\")\n        break\nelse:\n    print(\"\u274C Max\
+          \ retries reached. Manual intervention required.\")\n"
+      task: Self-Writing Error Recovery Loop

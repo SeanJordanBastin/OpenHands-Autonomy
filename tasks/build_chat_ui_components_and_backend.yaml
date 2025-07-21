@@ -1,0 +1,60 @@
+task:
+  id: build_chat_ui_components_and_backend
+  description: >
+    Replace default Vite template with a functional GPT-style chat UI in React + Tailwind,
+    connected to a FastAPI backend at POST /chat. Frontend uses Axios. Backend replies
+    with dummy agent response for now, or real agent output if available.
+  steps:
+    - step: Replace App.jsx with chat UI scaffold.
+      action: code.request_gpt_assistance
+      params:
+        instructions: >
+          Provide a full React component for App.jsx that includes:
+          - A scrollable chat message display area.
+          - Styled message bubbles (left for agent, right for user).
+          - A bottom input box with a "Send" button.
+          - On submit, post the message to http://localhost:3001/chat using Axios.
+          - Display the agent's reply in the chat window.
+
+    - step: Create FastAPI backend `main.py` with POST /chat endpoint.
+      action: code.request_gpt_assistance
+      params:
+        instructions: >
+          Create FastAPI backend code for main.py:
+          - Define POST /chat accepting JSON { message: string }.
+          - Return dummy JSON response { reply: "Hello, this is the agent." } for now.
+          - Allow CORS from localhost:5173.
+
+    - step: Save backend in /agent-chat-ui/backend/main.py.
+      action: file.write
+      params:
+        filepath: "./agent-chat-ui/backend/main.py"
+        content: |
+          from fastapi import FastAPI, Request
+          from fastapi.middleware.cors import CORSMiddleware
+          from pydantic import BaseModel
+
+          app = FastAPI()
+
+          app.add_middleware(
+              CORSMiddleware,
+              allow_origins=["http://localhost:5173"],
+              allow_credentials=True,
+              allow_methods=["*"],
+              allow_headers=["*"],
+          )
+
+          class ChatInput(BaseModel):
+              message: str
+
+          @app.post("/chat")
+          async def chat(input: ChatInput):
+              return {"reply": f"Agent received: {input.message}"}
+
+    - step: Launch FastAPI backend on port 3001.
+      action: shell.execute
+      params:
+        command: |
+          cd agent-chat-ui/backend
+          uvicorn main:app --reload --port 3001
+

@@ -1,0 +1,51 @@
+task: upgrade_agent_yaml_regex_fallback
+description: >
+  Add a fallback regex-based patcher to auto-repair YAML parsing errors
+  when GPT is unavailable or not needed. This is Step 3 in the agent autonomy upgrade.
+
+steps:
+  - name: add regex fallback patcher
+    file: agents/yaml_patchers/regex_fallback.py
+    content: |
+      import re
+
+      def basic_yaml_regex_fix(content):
+          # Fix 1: Add missing colon to lines that look like key-only
+          content = re.sub(r"^(\s*[\w\-]+)\s*$", r"\1:", content, flags=re.MULTILINE)
+
+          # Fix 2: Remove invalid quotes on scalars (common stream issue)
+          content = re.sub(r"^(\s*[\w\-]+):\s*['\"](.*)['\"]$", r"\1: \2", content, flags=re.MULTILINE)
+
+          # Fix 3: Add missing closing line if stream is cut off
+          if not content.endswith('\n'):
+              content += '\n'
+
+          return content
+
+  - name: wire fallback into YAML engine
+    find_replace:
+      file: core/yaml_engine.py
+      pattern: |
+        def repair_yaml\(content, filename\):
+          .*
+          repaired = gpt_yaml_fix\(content\)
+      replacement: |
+        def repair_yaml(content, filename):
+            from agents.yaml_patchers.regex_fallback import basic_yaml_regex_fix
+            try:
+                repaired = gpt_yaml_fix(content)
+            except Exception:
+                repaired = basic_yaml_regex_fix(content)
+
+  - name: confirm memory logging still works
+    file: core/yaml_engine.py
+    insert_after: 'repaired = basic_yaml_regex_fix(content)'
+    content: |
+      from memory.repair_log import save_fix_to_log
+      save_fix_to_log(filename, repaired)
+
+  - name: done
+    message: >
+      Fallback regex-based YAML repair added. If GPT call fails or is skipped,
+      the agent will use regex patching logic instead and store the fix in memory.
+

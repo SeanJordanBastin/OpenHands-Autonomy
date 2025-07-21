@@ -1,0 +1,54 @@
+task: run_self_directed_thinking_loop
+description: The agent autonomously thinks about what it should do next to improve the platform, without being told by a user.
+steps:
+  - name: Reflect on current project state
+    uses: chatgpt
+    inputs:
+      model: gpt-4o
+      messages:
+        - role: system
+          content: |
+            You are a self-directed software agent improving the ProcureIQ platform.
+            You are capable of observing what exists, what’s broken, and what’s missing.
+            Your goal is to continuously plan new improvements and queue them as task files.
+        - role: user
+          content: |
+            Here is your current knowledge:
+            - The agent has working CRUD, UI building, model migration, and YAML self-healing.
+            - Many YAMLs fail due to format or structure.
+            - Some tasks need rewriting or splitting up.
+            - The agent must eventually be able to fully build ProcureIQ alone.
+
+            Think carefully:
+            1. What should you work on next?
+            2. What task would move the platform forward or improve agent intelligence?
+            3. What are 2–3 actionable YAML tasks you can create and queue now?
+
+  - name: Parse GPT task suggestions
+    uses: python
+    run: |
+      import re
+      context["task_blocks"] = re.findall(r"```yaml(.*?)```", chatgpt.output, re.DOTALL)
+
+  - name: Save new task files
+    uses: python
+    run: |
+      import os
+      os.makedirs("tasks/generated", exist_ok=True)
+      for i, block in enumerate(context.get("task_blocks", [])):
+          with open(f"tasks/generated/self_directed_{i}.yaml", "w") as f:
+              f.write(block.strip())
+
+  - name: Log plan
+    uses: python
+    run: |
+      with open("logs/self_directed_plan_log.txt", "a") as log:
+          log.write("\\n\\n--- New Plan ---\\n" + chatgpt.output + "\\n")
+
+  - name: Loop and repeat
+    uses: shell
+    run: |
+      echo "Sleeping for 30 seconds before next self-reflection..."
+      sleep 30
+      poetry run python scripts/agent.py --task-file tasks/self_directed_thinking_loop.yaml
+

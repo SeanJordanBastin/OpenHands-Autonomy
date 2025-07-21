@@ -1,0 +1,42 @@
+task:
+  name: Upgrade Autonomous YAML Repair System
+  description: >
+    Add a persistent repair log so the agent remembers and reuses fixes to YAML issues without relying on GPT.
+    Update the YAML repair engine to check this log before calling GPT. Over time, the agent should become less dependent on GPT.
+
+  steps:
+    - name: Create repair_log.json
+      type: write_file
+      path: repair_log.json
+      content: |
+        []
+
+    - name: Update self-repair engine to use repair log
+      type: modify_file
+      path: scripts/yaml_self_heal_engine.py
+      instructions: |
+        1. Before calling GPT to fix YAML errors, check if the same error message and filename already exist in `repair_log.json`.
+        2. If a matching fix is found, apply the same edit automatically without GPT.
+        3. If no match is found, call GPT, then log:
+            - file name
+            - error message
+            - fix summary (from GPT response or generated automatically)
+            - timestamp
+        4. Append each new fix to the JSON array in `repair_log.json`.
+
+    - name: Make sure repair_log.json is read/write safe
+      type: modify_file
+      path: scripts/utils/json_log_utils.py
+      instructions: |
+        Create helper functions:
+        - `load_repair_log()` — safely reads and parses repair_log.json
+        - `save_repair_log(data)` — writes back updated log
+        - `find_past_fix(file, error)` — returns matching log entry if found
+
+    - name: Confirm agent can now self-heal without GPT
+      type: test
+      instructions: |
+        Break a known YAML (e.g. test_break.yaml), then rerun the same task twice:
+          1. First time it should call GPT and log the fix.
+          2. Second time it should fix it instantly using the stored log fix, without GPT.
+

@@ -1,0 +1,12 @@
+task: Enable automatic YAML fixing
+description: |
+  Enables the agent to automatically detect and repair malformed YAML files
+  without crashing, using fallback logic or GPT assistance.
+steps:
+  - name: Scan all YAML files for syntax errors
+    run: scripts/yaml_tools/scan_for_yaml_errors.py
+  - name: Fix detected YAML issues using regex fallbacks
+    run: scripts/yaml_tools/fix_with_regex.py
+  - name: Retry execution after fix
+    run: scripts/agent.py --task-file tasks/retry_previous.yaml
+

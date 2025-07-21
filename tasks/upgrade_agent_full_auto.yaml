@@ -1,0 +1,80 @@
+task:
+ name: Enable Full Auto-Healing, Memory, and Overnight Loop
+ description: Adds YAML + Python repair, GPT-based patching, memory recall, and retry loops for overnight steps:
+ - run: |
+ import os
+ import subprocess
+ import openai
+ import json
+ from datetime import datetime
+ openai.api_key = os.getenv("OPENAI_API_KEY")
+ BACKUP_DIR = "fixed_backups"
+ MEMORY_FILE = "fix_memory.json"
+ os.makedirs(BACKUP_DIR, exist_ok=True)
+ def load_memory():
+ if os.path.exists(MEMORY_FILE):
+ with open(MEMORY_FILE, "r") as f:
+ return json.load(f)
+ return {}
+ def save_memory(mem):
+ with open(MEMORY_FILE, "w") as f:
+ json.dump(mem, f, indent=2)
+ def ask_gpt_for_fix(filename, error):
+ with open(filename, "r") as f:
+ broken_code = f.read()
+ prompt = f"""You are an AI repair agent.
+The file `{filename}` encountered the following error:
+{error}
+Here is the broken content:
+```python
+{broken_code}
+```
+Return the FULL corrected code only. No explanations."""
+ response = openai.ChatCompletion.create(
+ model="gpt-4",
+ messages=[{"role": "user", "content": prompt}],
+ temperature=0
+ )
+ return response["choices"][0]["message"]["content"].strip()
+ def backup_and_replace(filename, new_content):
+ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+ backup_path = os.path.join(BACKUP_DIR, f"{os.path.basename(filename)}_{timestamp}.bak")
+ with open(filename, "r") as f:
+ original = f.read()
+ with open(backup_path, "w") as f:
+ f.write(original)
+ with open(filename, "w") as f:
+ f.write(new_content)
+ print(f"■ Backup saved → {backup_path}")
+ print(f"■ File updated → {filename}")
+ def run_task():
+ try:
+ subprocess.run(["poetry", "run", "python", "scripts/agent.py", "--task-file", "tasks/enable_auto_yaml return True
+ except subprocess.CalledProcessError as e:
+ print("■ Agent crashed. Asking GPT to fix it...")
+ error_msg = str(e)
+ lines = error_msg.split("\n")
+ for line in lines:
+ if "File" in line and any(ext in line for ext in [".py", ".yaml"]):
+ parts = line.strip().split("\"")
+ if len(parts) >= 2:
+ broken_file = parts[1]
+ memory = load_memory()
+ if error_msg in memory:
+ print("■ Using memory-based fix...")
+ fix = memory[error_msg]
+ else:
+ fix = ask_gpt_for_fix(broken_file, error_msg)
+ memory[error_msg] = fix
+ save_memory(memory)
+ backup_and_replace(broken_file, fix)
+ return False
+ return False
+ max_attempts = 10
+ for attempt in range(1, max_attempts + 1):
+ print(f"■ Attempt {attempt}")
+ if run_task():
+ print("■ Task completed successfully.")
+ break
+ else:
+ print("■ Max retries reached. Manual help needed.")

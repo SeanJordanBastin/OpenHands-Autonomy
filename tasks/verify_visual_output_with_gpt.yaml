@@ -1,0 +1,12 @@
+task: Verify visual output using GPT
+description: |
+  The agent should take a screenshot of the completed UI, then ask GPT if the UI meets
+  the expected result (✅ or ❌) based on visual logic. GPT must validate button visibility, layout, etc.
+steps:
+  - name: Take screenshot of current UI
+    run: scripts/tools/take_screenshot.py
+  - name: Send screenshot to GPT for visual validation
+    run: scripts/agent.py --validate-visual tasks/screenshot.png
+  - name: If GPT says ❌, trigger UI fix task
+    run: scripts/agent.py --task-file tasks/fix_ui_chat_page.yaml
+

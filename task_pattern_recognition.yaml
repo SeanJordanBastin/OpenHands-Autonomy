@@ -1,0 +1,41 @@
+task:
+  id: pattern_recognition_known_issues
+  description: >
+    Enable agent to autonomously resolve frequently recurring simple errors by recognizing patterns from repair_log.json without GPT.
+  steps:
+    - step: Load historical repair log (repair_log.json).
+      action: file.read
+      params:
+        filepath: "./repair_log.json"
+
+    - step: Extract successful repair patterns and store them.
+      action: code.run
+      params:
+        language: python
+        script: |
+          import json, re
+
+          with open('./repair_log.json', 'r') as f:
+              repairs = json.load(f)
+
+          patterns_db = {}
+
+          for entry in repairs.values():
+              if entry['result'] == 'success':
+                  error_msg = entry['error']
+                  fix = entry['fix']
+
+                  # Generalize patterns by replacing specifics (e.g., file names, line numbers)
+                  generalized_error = re.sub(r'(\d+|\'.*?\'|\".*?\")', '<*>', error_msg)
+                  patterns_db[generalized_error] = fix
+
+          with open('./known_patterns.json', 'w') as f:
+              json.dump(patterns_db, f, indent=2)
+
+          print(f"Pattern recognition database created with {len(patterns_db)} patterns.")
+
+    - step: Verify pattern database creation.
+      action: file.exists
+      params:
+        filepath: "./known_patterns.json"
+

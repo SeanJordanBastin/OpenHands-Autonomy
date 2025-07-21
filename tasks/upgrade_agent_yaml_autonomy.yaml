@@ -1,0 +1,72 @@
+task:
+  name: Enable YAML Autonomy
+  description: Replace agent.py and extend yaml_self_heal_engine.py so agent can self-heal broken YAMLs using GPT.
+  steps:
+    - name: Overwrite scripts/agent.py with autonomous YAML healing logic
+      write_file:
+        path: scripts/agent.py
+        content: |
+          import os
+          import traceback
+          import yaml
+          from wrap_yaml_tasks import wrap_task_file
+          from yaml_self_heal_engine import heal_yaml_with_gpt
+
+          TASKS_DIR = "tasks"
+
+          def load_task_file(task_file_path):
+              try:
+                  with open(task_file_path, "r") as file:
+                      return yaml.safe_load(file)
+              except yaml.YAMLError as e:
+                  print(f"\\n🚑 YAML error in {task_file_path}: {e}")
+                  fixed_path = heal_yaml_with_gpt(task_file_path)
+                  if fixed_path:
+                      print(f"✅ Recovered and saved to: {fixed_path}")
+                      return load_task_file(fixed_path)
+                  else:
+                      print(f"❌ GPT failed to repair: {task_file_path}")
+                      return None
+
+          def run_task(task_file_path):
+              task_data = load_task_file(task_file_path)
+              if not task_data:
+                  return
+
+              steps = task_data.get("task", {}).get("steps", [])
+              for step in steps:
+                  try:
+                      if "run" in step:
+                          print(f"\\n▶️ Running: {step['run']}")
+                          os.system(step["run"])
+                  except Exception as e:
+                      print(f"❌ Error while executing step: {e}")
+                      traceback.print_exc()
+
+          if __name__ == "__main__":
+              import sys
+              if len(sys.argv) < 3 or sys.argv[1] != "--task-file":
+                  print("Usage: poetry run python scripts/agent.py --task-file tasks/<your_task_file>.yaml")
+              else:
+                  task_file = sys.argv[2]
+                  run_task(task_file)
+
+    - name: Patch yaml_self_heal_engine.py to support GPT healing
+      append_file:
+        path: scripts/yaml_self_heal_engine.py
+        content: |
+          def heal_yaml_with_gpt(broken_file):
+              from utils.gpt_repairer import repair_yaml  # your GPT wrapper
+              with open(broken_file, "r") as f:
+                  broken_yaml = f.read()
+
+              fixed_yaml = repair_yaml(broken_yaml)
+              if not fixed_yaml:
+                  return None
+
+              fixed_path = broken_file.replace(".yaml", "_fixed.yaml")
+              with open(fixed_path, "w") as f:
+                  f.write(fixed_yaml)
+
+              return fixed_path
+

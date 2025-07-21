@@ -1,0 +1,72 @@
+task: Rename 'agent' folder to 'jarvis', update imports, and rename class to 'Jarvis'
+goals:
+  - Avoid reserved word conflict by renaming 'agent' folder to 'jarvis'
+  - Update all Python files to change 'agent.' imports to 'jarvis.'
+  - Rename 'AutonomousAgent' class to 'Jarvis' for consistent branding
+  - Confirm the new 'jarvis.Jarvis' class can be imported and instantiated
+
+steps:
+  - description: Rename folder from 'agent' to 'jarvis'
+    run: |
+      import os
+      if os.path.exists("agent"):
+          os.rename("agent", "jarvis")
+          print("✅ Renamed 'agent/' to 'jarvis/'")
+      else:
+          print("⚠️ 'agent/' folder not found — already renamed?")
+
+  - description: Replace all 'from agent.' and 'import agent.' with 'jarvis.' recursively
+    run: |
+      import os
+      for root, _, files in os.walk("."):
+          for file in files:
+              if file.endswith(".py"):
+                  file_path = os.path.join(root, file)
+                  with open(file_path, "r") as f:
+                      content = f.read()
+                  new_content = content.replace("from agent.", "from jarvis.").replace("import agent.", "import jarvis.")
+                  if new_content != content:
+                      with open(file_path, "w") as f:
+                          f.write(new_content)
+                      print(f"🛠 Updated imports in {file_path}")
+
+  - description: Rename class 'AutonomousAgent' to 'Jarvis' in jarvis/autonomous_agent.py
+    run: |
+      path = "jarvis/autonomous_agent.py"
+      if os.path.exists(path):
+          with open(path, "r") as f:
+              content = f.read()
+          if "class AutonomousAgent" in content:
+              content = content.replace("class AutonomousAgent", "class Jarvis")
+              with open(path, "w") as f:
+                  f.write(content)
+              print("✅ Renamed class AutonomousAgent → Jarvis in jarvis/autonomous_agent.py")
+          else:
+              print("ℹ️ Class 'AutonomousAgent' not found (already renamed?)")
+      else:
+          print("❌ Could not find jarvis/autonomous_agent.py")
+
+  - description: Replace all remaining uses of 'AutonomousAgent' with 'Jarvis' across the project
+    run: |
+      import os
+      for root, _, files in os.walk("."):
+          for file in files:
+              if file.endswith(".py"):
+                  path = os.path.join(root, file)
+                  with open(path, "r") as f:
+                      content = f.read()
+                  new_content = content.replace("AutonomousAgent", "Jarvis")
+                  if new_content != content:
+                      with open(path, "w") as f:
+                          f.write(new_content)
+                      print(f"✏️ Updated class name in {path}")
+
+  - description: Confirm that 'Jarvis' can be imported from 'jarvis.autonomous_agent'
+    run: |
+      try:
+          from jarvis.autonomous_agent import Jarvis
+          agent = Jarvis()
+          print("✅ Successfully imported and initialized Jarvis agent.")
+      except Exception as e:
+          raise ImportError(f"❌ Final import failed: {e}")
+

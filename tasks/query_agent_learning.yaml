@@ -1,0 +1,16 @@
+task: Query Agent Learning Log
+description: Ask the agent to summarize what it has learned, fixed, or improved in the last 7 days.
+
+steps:
+  - message: >
+      Please summarize everything you've learned or fixed over the last 7 days.
+      Focus on: YAML fixing, retry logic, visual validation, bug patterns, and any successful task loops.
+  - run_gpt_reflection:
+      use_logs: true
+      use_recent_task_memory: true
+      use_debug_outputs: true
+      summarize: true
+      format: bullet_points
+  - output_result
+
+

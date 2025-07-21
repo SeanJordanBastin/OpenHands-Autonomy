@@ -1,0 +1,28 @@
+task:
+  name: fix_broken_yamls_with_gpt
+  steps:
+  - run:
+      description: "Fully repair the following YAMLs:\n  - self_heal_with_chatgpt.yaml\n\
+        \  - test_break.yaml\n  - upgrade_agent_full_auto.yaml\n  - enable_auto_yaml_fixing.yaml\n\
+        \  - self_writing_loop.yaml\nIf broken, sanitize them or ask GPT to help.\
+        \ Retry until all are valid.\n"
+      name: fix_broken_yamls_with_gpt
+      steps:
+      - name: Loop over each broken YAML and attempt repair
+        run: "echo \"\U0001F501 Starting YAML fix loop...\"\n\nfiles=(\n  \"self_heal_with_chatgpt.yaml\"\
+          \n  \"test_break.yaml\"\n  \"upgrade_agent_full_auto.yaml\"\n  \"enable_auto_yaml_fixing.yaml\"\
+          \n  \"self_writing_loop.yaml\"\n)\n\nfor file in \"${files[@]}\"; do\n \
+          \ echo \"\U0001F50D Checking tasks/$file...\"\n\n  # Step 1: Try sanitizer\n\
+          \  if python scripts/yaml_sanitizer.py --path tasks/$file; then\n    echo\
+          \ \"\u2705 $file is valid after sanitation\"\n    continue\n  fi\n\n  #\
+          \ Step 2: Ask GPT for a fix\n  echo \"\U0001F916 Sanitizer failed. Asking\
+          \ GPT to help fix $file...\"\n  poetry run python scripts/ask_gpt_fix.py\
+          \ --file tasks/$file\n\n  # Step 3: Retry until it validates\n  while !\
+          \ python scripts/yaml_sanitizer.py --path tasks/$file; do\n    echo \"\u26A0\
+          \uFE0F Still broken. Re-asking GPT...\"\n    poetry run python scripts/ask_gpt_fix.py\
+          \ --file tasks/$file\n  done\n\n  echo \"\u2705 $file is now fixed!\"\n\
+          done\n"
+      - name: Summary
+        run: "echo \"\U0001F389 All broken YAMLs are now repaired, validated, and\
+          \ ready.\"\n"
+      task: fix_broken_yamls_with_gpt

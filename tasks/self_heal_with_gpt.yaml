@@ -1,0 +1,5 @@
+task:
+  name: self_heal_with_gpt
+  steps:
+    - run: poetry run python scripts/yaml_self_heal_engine.py
+

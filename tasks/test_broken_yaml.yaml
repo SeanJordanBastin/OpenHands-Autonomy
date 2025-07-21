@@ -1,0 +1,7 @@
+task:
+  name: Broken YAML Test
+  description: This task will fail to parse
+  steps:
+    - run: echo "Hello
+      world"
+

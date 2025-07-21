@@ -1,0 +1,65 @@
+task: self_test_and_learn
+description: |
+  Every night at 2:30 AM, JARVIS will:
+  1. Search for broken YAML files.
+  2. Fix any found errors autonomously using GPT.
+  3. Test improvements in a safe sandbox.
+  4. Record her own learning outcomes.
+
+steps:
+  - name: Find broken YAMLs in /tasks
+    type: python
+    code: |
+      import os
+      broken = []
+      for fname in os.listdir("tasks"):
+          if fname.endswith(".yaml"):
+              try:
+                  with open(f"tasks/{fname}") as f:
+                      import yaml
+                      yaml.safe_load(f)
+              except Exception:
+                  broken.append(fname)
+      with open(".jarvis_memory/broken_list.txt", "w") as out:
+          out.write("\n".join(broken))
+      print(f"Found {len(broken)} broken YAMLs.")
+
+  - name: Fix each broken YAML
+    type: loop
+    from_file: .jarvis_memory/broken_list.txt
+    loop_var: broken_yaml
+    steps:
+      - name: Repair YAML using GPT
+        type: gpt_fix_yaml
+        input_path: tasks/${broken_yaml}
+        output_path: fixed_backups/${broken_yaml}
+
+      - name: Overwrite original with fixed version
+        type: file_replace
+        source: fixed_backups/${broken_yaml}
+        destination: tasks/${broken_yaml}
+
+  - name: Run validation tests
+    type: python
+    code: |
+      import os
+      results = {}
+      for fname in os.listdir("tasks"):
+          if fname.endswith(".yaml"):
+              try:
+                  import yaml
+                  with open(f"tasks/{fname}") as f:
+                      yaml.safe_load(f)
+                  results[fname] = "✅ OK"
+              except Exception as e:
+                  results[fname] = f"❌ {str(e)}"
+      with open(".jarvis_memory/nightly_validation_log.txt", "w") as f:
+          for k, v in results.items():
+              f.write(f"{k}: {v}\n")
+
+  - name: Log completion note
+    type: file_append
+    path: .jarvis_memory/jarvis_activity_log.txt
+    content: |
+      ✅ ${CURRENT_DATETIME}: JARVIS finished her nightly YAML fix + test routine.
+

@@ -1,0 +1,84 @@
+ktask: auto_fix_broken_tasks_visually
+
+description: |
+  Automatically fix all broken YAML tasks by:
+  - Reading and understanding their goal
+  - Fixing them using GPT
+  - Checking the output visually via screenshots (e.g., confirming ✅ vs ❌)
+  - Repeating until success
+
+steps:
+  - name: "List broken task files"
+    run: |
+      import os, yaml
+      broken_files = []
+      for file in os.listdir("tasks"):
+          if file.endswith(".yaml"):
+              try:
+                  with open(f"tasks/{file}") as f:
+                      yaml.safe_load(f)
+              except Exception as e:
+                  broken_files.append({"file": file, "error": str(e)})
+      return {"invalid": broken_files}
+
+  - if: invalid
+    foreach: invalid
+    as: file_error
+    do:
+      - name: "Fix '{{file_error.file}}' with intent-aware GPT"
+        max_retries: 10
+        run: |
+          import openai, os, yaml
+
+          path = f"tasks/{{file_error.file}}"
+          with open(path) as f:
+              original = f.read()
+
+          prompt = f"""
+YAML file `{{file_error.file}}` is broken with the following error:
+{{file_error['error']}}
+
+Please:
+1. Infer the purpose of the YAML.
+2. Rewrite the task from scratch.
+3. Ensure it's valid, includes 'task:', and has all required keys.
+
+Here is the broken content:
+---
+{{original}}
+
+Now return only the valid fixed YAML:"""
+
+          openai.api_key = os.getenv("OPENAI_API_KEY")
+          response = openai.ChatCompletion.create(
+              model="gpt-4",
+              messages=[{"role": "user", "content": prompt}],
+              temperature=0.2
+          )
+
+          fixed = response.choices[0].message.content.strip()
+          with open(path, "w") as f:
+              f.write(fixed)
+
+          # Validate
+          try:
+              yaml.safe_load(fixed)
+              return {"status": "✅ Fixed"}
+          except Exception as e:
+              raise Exception(f"❌ Still broken: {e}")
+
+  - name: "Check screenshot for remaining ❌ marks"
+    run: |
+      import os, re
+      from PIL import Image
+      import pytesseract
+
+      screenshot_folder = os.path.expanduser("~/Downloads")
+      latest = sorted([f for f in os.listdir(screenshot_folder) if f.endswith(".png")])[-1]
+      text = pytesseract.image_to_string(Image.open(os.path.join(screenshot_folder, latest)))
+
+      if "❌" in text or "Failed to parse" in text:
+          raise Exception("❌ Agent still has errors. Repeating loop.")
+      else:
+          return {"status": "✅ All YAMLs fixed and visually confirmed"}
+

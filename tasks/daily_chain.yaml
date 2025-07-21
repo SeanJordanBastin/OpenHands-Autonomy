@@ -1,0 +1,11 @@
+task:
+  name: Daily Autonomous Agent Maintenance
+  steps:
+    - run: tasks/self_repair_retry_loop.yaml
+    - run: tasks/self_improve_loop.yaml
+    - run: tasks/upgrade_agent_gpt_fix_all.yaml
+    - run: tasks/enable_yaml_self_healing_loop.yaml
+    - run: tasks/upgrade_agent_yaml_autonomy.yaml
+    - run: tasks/upgrade_agent_gpt_fix_all_wrapped.yaml
+    - run: tasks/auto_log_learning.yaml  # ✅ NEW: auto-journal/log memory
+

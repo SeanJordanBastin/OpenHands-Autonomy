@@ -1,0 +1,68 @@
+task:
+  name: yaml_self_healing_retry_loop_smart
+  steps:
+  - run:
+      steps:
+      - name: "\U0001F3C3 Run Initial Task"
+        on_error: continue
+        run: poetry run python scripts/agent.py --task-file ${task_to_heal}
+      - name: "\U0001F4F8 Screenshot After First Run"
+        run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+      - ask_gpt:
+          image: ${screenshot_path}
+          prompt: "This is the output of running the task file: ${task_to_heal}\n\
+            Based on the screenshot, is the result \u2705 (success) or \u274C (failure)?\n\
+            Only answer \u2705 or \u274C with one short reasoning line.\n"
+        name: "\U0001F9E0 Ask GPT if Result is \u2705"
+        save_response_as: gpt_verdict
+      - if: "${gpt_verdict} == \"\u274C\""
+        loop:
+          steps:
+          - ask_gpt:
+              files:
+              - ${task_to_heal}
+              image: ${screenshot_path}
+              prompt: "The task file ${task_to_heal} failed to run.\nPlease return\
+                \ a complete, corrected YAML for this file.\nMake sure the YAML is\
+                \ fully valid.\nInclude no explanations \u2014 just return raw YAML.\n"
+            name: "\U0001F9E0 Ask GPT to Fix the YAML"
+            save_response_as: fixed_yaml
+          - name: "\U0001F4BE Overwrite Broken YAML with Fix"
+            run: echo "${fixed_yaml}" > ${task_to_heal}
+          - name: "\U0001F3C3 Re-run Task After Fix"
+            on_error: continue
+            run: poetry run python scripts/agent.py --task-file ${task_to_heal}
+          - name: "\U0001F4F8 Take Screenshot After Retry"
+            run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+          - ask_gpt:
+              image: ${screenshot_path}
+              prompt: "Is the result now \u2705 or still \u274C?\nUse the screenshot\
+                \ to verify.\n"
+            name: "\U0001F9E0 Ask GPT Again if Fixed"
+            save_response_as: gpt_verdict
+          - if: "${gpt_verdict} == \"\u2705\""
+            name: "\u2705 Exit Retry if Fixed"
+            run: "echo \"\U0001F389 Success confirmed by GPT!\" && break"
+          - name: "\u2795 Increment Retry Count"
+            run: export retry_count=$((retry_count + 1))
+          while: ${retry_count} < ${max_retries}
+        name: "\U0001F501 Retry if GPT Says \u274C"
+      - ask_gpt:
+          image: ${screenshot_path}
+          prompt: "After ${max_retries} attempts, the task file ${task_to_heal} is\
+            \ still failing.\nPlease propose a new working version of this YAML from\
+            \ scratch that achieves the same goal.\nReturn only valid YAML \u2014\
+            \ no commentary.\n"
+        if: "${gpt_verdict} == \"\u274C\""
+        name: "\U0001F9E0 Ask GPT for New Plan if Still \u274C"
+        save_response_as: new_yaml
+      - if: "${gpt_verdict} == \"\u274C\""
+        name: "\U0001F4BE Save New Plan and Restart"
+        run: "echo \"${new_yaml}\" > ${task_to_heal}\necho \"\U0001F501 New strategy\
+          \ written to ${task_to_heal}\"\n"
+      task: Smart YAML Self-Healing Retry Loop
+      vars:
+        max_retries: 3
+        retry_count: 0
+        screenshot_path: ./screenshots/self_writing_loop_result.png
+        task_to_heal: ./tasks/self_writing_loop.yaml

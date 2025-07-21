@@ -1,0 +1,57 @@
+task: "Permanent YAML Repair and Validation"
+
+vars:
+  task_dir: "./tasks"
+  max_retries: 3
+
+steps:
+  - name: 🔍 List All YAML Files
+    run: |
+      import os
+      with open("temp_yaml_list.txt", "w") as out:
+          for f in os.listdir("${task_dir}"):
+              if f.endswith(".yaml"):
+                  out.write(f + "\n")
+
+  - name: 🧪 Validate Each YAML Using yamllint
+    loop:
+      for_each_file: temp_yaml_list.txt
+      steps:
+        - name: Check ${item} with yamllint
+          run: |
+            from yamllint import linter
+            from yamllint.config import YamlLintConfig
+
+            config = YamlLintConfig("extends: default")
+            path = os.path.join("${task_dir}", "${item}")
+            with open(path) as f:
+                content = f.read()
+
+            problems = list(linter.run(content, config))
+            if problems:
+                print("❌ Problems found in", "${item}")
+                with open("broken_list.txt", "a") as out:
+                    out.write("${item}\n")
+                with open(f"broken_yaml_cache/${item}.txt", "w") as backup:
+                    backup.write(content)
+
+  - name: 🧠 Ask GPT to Fix Broken YAMLs
+    loop:
+      for_each_file: broken_list.txt
+      steps:
+        - name: Fix ${item} with GPT
+          ask_gpt:
+            prompt: |
+              This YAML file is broken and did not pass yamllint.
+              Fix it and return only the corrected YAML — no extra text.
+
+              Filename: ${item}
+              Content:
+              ---
+            files:
+              - broken_yaml_cache/${item}.txt
+          save_response_as: fixed_yaml
+
+        - name: 💾 Overwrite Original File
+          run: echo "${fixed_yaml}" > ${task_dir}/${item}
+

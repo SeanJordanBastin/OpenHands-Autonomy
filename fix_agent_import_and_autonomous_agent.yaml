@@ -1,0 +1,51 @@
+task: Fix 'agent is not a package' and ensure AutonomousAgent is importable
+goals:
+  - Create missing __init__.py in 'agent/' to mark it as a package
+  - Create 'agent/autonomous_agent.py' if it does not exist
+  - Populate 'autonomous_agent.py' with a basic AutonomousAgent class
+  - Confirm import from 'agent.autonomous_agent' is successful
+
+steps:
+  - description: Create 'agent/' directory if missing
+    run: |
+      import os
+      if not os.path.exists("agent"):
+          os.makedirs("agent")
+
+  - description: Create 'agent/__init__.py' to mark it as a package
+    run: |
+      init_file = "agent/__init__.py"
+      if not os.path.exists(init_file):
+          with open(init_file, "w") as f:
+              f.write("# Makes 'agent' a Python package\n")
+
+  - description: Ensure 'agent/autonomous_agent.py' exists and contains a stub class
+    run: |
+      agent_file = "agent/autonomous_agent.py"
+      if not os.path.exists(agent_file):
+          with open(agent_file, "w") as f:
+              f.write(
+                  "class AutonomousAgent:\n"
+                  "    def __init__(self):\n"
+                  "        print(\"✅ AutonomousAgent initialized\")\n"
+              )
+      else:
+          # Overwrite safely only if class isn't present
+          content = open(agent_file).read()
+          if "class AutonomousAgent" not in content:
+              with open(agent_file, "w") as f:
+                  f.write(
+                      "class AutonomousAgent:\n"
+                      "    def __init__(self):\n"
+                      "        print(\"✅ AutonomousAgent initialized\")\n"
+                  )
+
+  - description: Confirm 'AutonomousAgent' can be imported from 'agent.autonomous_agent'
+    run: |
+      try:
+          from agent.autonomous_agent import AutonomousAgent
+          agent = AutonomousAgent()
+          print("✅ Import successful.")
+      except Exception as e:
+          raise ImportError(f"❌ Import failed: {e}")
+

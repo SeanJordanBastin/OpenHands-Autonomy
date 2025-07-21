@@ -1,0 +1,15 @@
+task:
+  name: build_procureiq_loop
+  steps:
+  - run:
+      tasks:
+      - command: cd frontend && npm install
+        description: Install frontend dependencies
+      - command: cd openhands && poetry install
+        description: Install backend dependencies
+      - command: cd openhands && poetry run alembic upgrade head
+        description: Run database migrations
+      - command: cd openhands && poetry run uvicorn app.main:app --reload
+        description: Start backend server
+      - command: cd frontend && npm run dev
+        description: Start frontend server

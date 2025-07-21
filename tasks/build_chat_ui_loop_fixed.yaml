@@ -1,0 +1,24 @@
+task:
+  name: Build Chat UI with React Loop
+  steps:
+    - run: |
+        import React, { useState, useEffect } from 'react';
+
+        const Chat = () => {
+          const [messages, setMessages] = useState([]);
+
+          const sendMessage = (input) => {
+            setMessages((prev) => [...prev, { sender: 'user', text: input }]);
+          };
+
+          return (
+            <div>
+              {messages.map((msg, i) => (
+                <p key={i}>{msg.sender}: {msg.text}</p>
+              ))}
+            </div>
+          );
+        };
+
+        export default Chat;
+

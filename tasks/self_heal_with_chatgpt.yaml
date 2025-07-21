@@ -1,0 +1,30 @@
+task:
+  name: Self Heal and Upgrade with ChatGPT
+  description: Detects agent errors, calls GPT-4 to help fix them, and returns proposed upgrade logic.
+  steps:
+    - run: |
+        import subprocess
+        import openai
+        import os
+
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+
+        def ask_gpt(error):
+            prompt = f"""You're debugging an AI task automation engine. It encountered the following error while trying to run:
+
+{error}
+
+Please provide the corrected version of the file that caused this issue, or explain the required changes in clear steps. Only respond with the corrected code or patch — no commentary or disclaimers."""
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0
+            )
+            return response['choices'][0]['message']['content']
+
+        try:
+            subprocess.run(["poetry", "run", "python", "scripts/agent.py", "--task-file", "tasks/enable_auto_yaml_fixing.yaml"], check=True)
+        except subprocess.CalledProcessError as e:
+            print("🔥 Agent failed. Asking GPT for help...")
+            print(ask_gpt(str(e)))
+

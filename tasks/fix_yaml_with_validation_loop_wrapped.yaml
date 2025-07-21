@@ -1,0 +1,47 @@
+task:
+  name: fix_yaml_with_validation_loop
+  steps:
+  - run:
+      description: 'Loop through all broken YAMLs in /tasks directory. For each: -
+        Attempt auto-fix - Re-validate after each fix (using internal YAML parser)
+        - If still broken, ask GPT for better fix - Retry until file is clean - Save
+        fix and store GPT fix in memory - Skip files that are already OK
+
+        '
+      steps:
+      - name: Scan for broken YAML files
+        run: 'from utils.yaml_utils import find_broken_yaml_files
+
+          broken_files = find_broken_yaml_files("tasks")
+
+          memory["broken_yaml_files"] = broken_files
+
+          '
+      - do:
+        - name: Load YAML content
+          run: "file_path = loop_item\nwith open(file_path, \"r\") as f:\n    original\
+            \ = f.read()\nmemory[\"yaml_attempt\"] = original\n"
+        - name: Try fix and validate
+          retry:
+            max_attempts: 5
+            steps:
+            - ask_gpt: 'This YAML file is broken and fails to parse:
+
+                ---
+
+                {{ memory["yaml_attempt"] }}
+
+                ---
+
+                Fix the syntax and return valid YAML only.
+
+                '
+              name: Ask GPT for fix
+            - name: Save and validate fix
+              run: "import yaml\nfixed = gpt_reply\ntry:\n    yaml.safe_load(fixed)\n\
+                \    with open(loop_item, \"w\") as f:\n        f.write(fixed)\n \
+                \   memory[\"fix_status\"] = \"success\"\nexcept Exception:\n    memory[\"\
+                yaml_attempt\"] = fixed\n    raise Exception(\"Still broken\")\n"
+        for: memory["broken_yaml_files"]
+        name: Loop through broken files and fix
+      task: fix_yaml_with_validation_loop

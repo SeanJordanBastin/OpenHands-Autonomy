@@ -1,0 +1,16 @@
+task:
+  name: Auto-Migrate Model Changes
+  description: Automatically generate and apply Alembic migrations when models are updated.
+  steps:
+    - name: Detect model changes and generate migration
+      command: |
+        Run: alembic revision --autogenerate -m "auto-migration"
+
+    - name: Apply the migration
+      command: |
+        Run: alembic upgrade head
+
+    - name: Log success
+      command: |
+        If successful, log "✅ Auto migration complete"
+

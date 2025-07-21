@@ -1,0 +1,56 @@
+task: Fix 'agent is not a package' and import AutonomousAgent correctly
+goals:
+  - Add project root to sys.path before any imports
+  - Ensure 'agent/__init__.py' exists to mark it as a package
+  - Ensure 'agent/autonomous_agent.py' has a valid class
+  - Confirm import of AutonomousAgent works
+
+steps:
+  - description: Add project root (one level up from scripts/) to sys.path
+    run: |
+      import sys, os
+      script_dir = os.path.dirname(os.path.abspath(__file__))
+      root_dir = os.path.abspath(os.path.join(script_dir, ".."))
+      if root_dir not in sys.path:
+          sys.path.insert(0, root_dir)
+          print(f"✅ Added project root to sys.path: {root_dir}")
+      else:
+          print(f"ℹ️ Project root already in sys.path")
+
+  - description: Ensure 'agent/__init__.py' exists
+    run: |
+      import os
+      os.makedirs("agent", exist_ok=True)
+      init_file = os.path.join("agent", "__init__.py")
+      if not os.path.exists(init_file):
+          with open(init_file, "w") as f:
+              f.write("# Init for agent package\n")
+          print("✅ Created agent/__init__.py")
+      else:
+          print("ℹ️ agent/__init__.py already exists")
+
+  - description: Ensure 'agent/autonomous_agent.py' exists with AutonomousAgent class
+    run: |
+      file_path = os.path.join("agent", "autonomous_agent.py")
+      if not os.path.exists(file_path):
+          with open(file_path, "w") as f:
+              f.write("class AutonomousAgent:\n    def __init__(self):\n        print('✅ AutonomousAgent initialized')\n")
+          print("✅ Created autonomous_agent.py")
+      else:
+          content = open(file_path).read()
+          if "class AutonomousAgent" not in content:
+              with open(file_path, "w") as f:
+                  f.write("class AutonomousAgent:\n    def __init__(self):\n        print('✅ AutonomousAgent initialized')\n")
+              print("✅ Fixed autonomous_agent.py")
+          else:
+              print("ℹ️ autonomous_agent.py already contains AutonomousAgent")
+
+  - description: Attempt import now that sys.path and package structure are fixed
+    run: |
+      try:
+          from agent.autonomous_agent import AutonomousAgent
+          AutonomousAgent()
+          print("✅ Successfully imported AutonomousAgent")
+      except Exception as e:
+          raise ImportError(f"❌ Still failed to import AutonomousAgent: {e}")
+

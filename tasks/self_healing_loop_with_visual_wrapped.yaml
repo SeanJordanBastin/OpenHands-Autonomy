@@ -1,0 +1,18 @@
+task:
+  name: self_healing_loop_with_visual
+  steps:
+  - run:
+      steps:
+      - name: Detect and repair broken YAML tasks
+        run_task: fix_yaml_with_validation_loop_wrapped
+      - name: Run all wrapped .yaml tasks to validate correctness
+        shell: "for file in tasks/*_wrapped.yaml; do\n  echo \"Running $file\"\n \
+          \ poetry run python scripts/agent.py --task-file \"$file\"\ndone\n"
+      - name: Take screenshot after repair attempts
+        shell: "import pyautogui\nimport datetime\nimport os\n\ntimestamp = datetime.datetime.now().strftime(\"\
+          %Y-%m-%d_%H-%M-%S\")\npath = os.path.expanduser(f\"~/Downloads/agent_check_{timestamp}.png\"\
+          )\nscreenshot = pyautogui.screenshot()\nscreenshot.save(path)\nprint(f\"\
+          [\u2705] Screenshot saved to {path}\")\n"
+      - name: Visually verify result using GPT
+        run_task: verify_visual_output_with_gpt
+      task: Autonomous self-healing agent loop with visual confirmation

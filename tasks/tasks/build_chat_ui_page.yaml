@@ -1,0 +1,40 @@
+task:
+  name: Build Agent Chat UI Page (ChatGPT-like)
+  description: Create a frontend page to chat with the agent like ChatGPT.
+  steps:
+    - name: Create chat page layout
+      command: |
+        Scaffold a React page (e.g., `Chat.jsx`) with:
+        - Input box for messages
+        - Submit button
+        - Scrollable chat history window
+
+    - name: Connect to agent backend
+      command: |
+        Use `fetch("/api/agent/chat")` or the correct endpoint to:
+        - Send user input
+        - Display agent's reply
+        Add loading spinner while waiting.
+
+    - name: Add persistent storage
+      command: |
+        Optionally save chat history to localStorage or backend.
+        Reload saved history on page load.
+
+    - name: Add polish
+      command: |
+        Make the layout responsive.
+        Add timestamp per message.
+        Auto-scroll to latest message.
+        Add profile icons ("User" vs "AI") for clarity.
+
+    - name: Register route
+      command: |
+        Add a new route `/chat` in your frontend router (React Router).
+
+    - name: Confirm working UI
+      command: |
+        Navigate to `http://localhost:3000/chat`.
+        Test sending messages to the agent and receiving responses.
+        Fix any console errors.
+

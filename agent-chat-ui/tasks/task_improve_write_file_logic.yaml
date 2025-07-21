@@ -1,0 +1,11 @@
+task: Improve Agent's Write File Logic
+
+steps:
+  - action: enhance_agent_capability
+    feature: write_file_safety_and_reliability
+    improvements:
+      - auto_create_parent_dirs: true
+      - jsx_yaml_escape_handling: true
+      - fallback_output_on_failure: true
+      - log_write_success_to: task.log
+

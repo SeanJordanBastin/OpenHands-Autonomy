@@ -1,0 +1,31 @@
+task: Push OpenHands Code to GitHub
+goals:
+  - Sync full OpenHands-main folder to GitHub
+  - Push to repo: OpenHands-Autonomy
+  - Enable both JARVIS + ChatGPT to view full source
+  - Avoid duplicate remotes or double commits
+steps:
+  - name: Load GitHub token
+    command: export GITHUB_TOKEN=$(cat ~/.jarvis/github_token.txt)
+
+  - name: Set Git Identity
+    command: |
+      git config user.email "jarvis@openhands.ai"
+      git config user.name "JARVIS"
+
+  - name: Ensure Git Repo Exists
+    command: |
+      git init || true
+      git remote remove origin || true
+      git remote add origin https://seanbastin:${GITHUB_TOKEN}@github.com/seanbastin/OpenHands-Autonomy.git
+
+  - name: Add and Commit Files
+    command: |
+      git add .
+      git commit -m "🔄 Sync: Full code upload for JARVIS + GPT"
+      git branch -M main
+
+  - name: Push to GitHub
+    command: |
+      git push -u origin main --force
+

@@ -1,0 +1,68 @@
+task:
+  id: agent_decision_transparency_ui
+  description: >
+    Implement a transparency system for the agent by maintaining a clear, human-readable summary log of recent agent decisions and actions, accessible via CLI.
+  steps:
+    - step: Create or update a recent actions summary log (recent_actions.json).
+      action: code.run
+      params:
+        language: python
+        script: |
+          import json, os
+          from datetime import datetime
+
+          recent_actions_path = './recent_actions.json'
+
+          action_entry = {
+              "timestamp": datetime.now().isoformat(),
+              "action": "Initialized decision transparency log.",
+              "details": "Log created for tracking agent actions and decisions."
+          }
+
+          if os.path.exists(recent_actions_path):
+              with open(recent_actions_path, 'r') as f:
+                  actions = json.load(f)
+          else:
+              actions = []
+
+          actions.insert(0, action_entry)
+          actions = actions[:10]  # Keep only the 10 most recent actions
+
+          with open(recent_actions_path, 'w') as f:
+              json.dump(actions, f, indent=2)
+
+          print("Recent actions log initialized and updated.")
+
+    - step: Add CLI command (`agent_status`) for displaying recent actions.
+      action: code.run
+      params:
+        language: python
+        script: |
+          cli_script_path = "./agent_status.py"
+          cli_script_content = '''
+          import json
+
+          def display_recent_actions():
+              try:
+                  with open("./recent_actions.json", "r") as f:
+                      actions = json.load(f)
+                  print("\\nAgent Recent Actions:\\n" + "-"*25)
+                  for action in actions:
+                      print(f"[{action['timestamp']}] {action['action']} - {action['details']}")
+              except FileNotFoundError:
+                  print("No recent actions log found.")
+
+          if __name__ == "__main__":
+              display_recent_actions()
+          '''
+
+          with open(cli_script_path, 'w') as f:
+              f.write(cli_script_content.strip())
+
+          print("CLI command 'agent_status' created.")
+
+    - step: Verify CLI command creation.
+      action: file.exists
+      params:
+        filepath: "./agent_status.py"
+

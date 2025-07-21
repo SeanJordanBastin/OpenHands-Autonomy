@@ -1,0 +1,46 @@
+task: Convert all remaining references from AutonomousAgent to Jarvis
+goals:
+  - Rename class references from AutonomousAgent to Jarvis
+  - Change all imports from 'agent.' to 'jarvis.'
+  - Ensure jarvis/task_loader.py exists and is functional
+
+steps:
+  - description: Update all .py files to use 'Jarvis' and 'jarvis.' imports
+    run: |
+      import os
+      for root, _, files in os.walk("."):
+          for file in files:
+              if file.endswith(".py"):
+                  path = os.path.join(root, file)
+                  with open(path, "r") as f:
+                      content = f.read()
+                  updated = (
+                      content
+                      .replace("from agent.", "from jarvis.")
+                      .replace("import agent.", "import jarvis.")
+                      .replace("class AutonomousAgent", "class Jarvis")
+                      .replace("AutonomousAgent(", "Jarvis(")
+                      .replace("AutonomousAgent:", "Jarvis:")
+                  )
+                  if updated != content:
+                      with open(path, "w") as f:
+                          f.write(updated)
+                      print(f"✅ Updated {path}")
+
+  - description: Create jarvis/task_loader.py if missing
+    run: |
+      import os
+      os.makedirs("jarvis", exist_ok=True)
+      path = "jarvis/task_loader.py"
+      if not os.path.exists(path):
+          with open(path, "w") as f:
+              f.write(
+                  "import yaml\n\n"
+                  "def load_tasks_from_yaml(path):\n"
+                  "    with open(path, 'r') as f:\n"
+                  "        return yaml.safe_load(f) or []\n"
+              )
+          print("✅ Created jarvis/task_loader.py with basic loader")
+      else:
+          print("ℹ️ jarvis/task_loader.py already exists")
+

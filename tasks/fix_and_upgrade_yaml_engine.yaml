@@ -1,0 +1,24 @@
+task:
+  name: Fix and Upgrade YAML Engine
+  steps:
+    - run: |
+        import os
+        import yaml
+
+        def auto_repair_yaml(path):
+            with open(path, 'r') as f:
+                raw = f.read()
+            if 'task:' not in raw:
+                print(f"🔧 Wrapping missing task: block in {path}")
+                fixed = 'task:\n  name: AutoWrapped Task\n  steps:\n    - run: |\n' + '\n'.join(['        ' + l for l in raw.splitlines()])
+                fixed_path = path.replace('.yaml', '_fixed.yaml')
+                with open(fixed_path, 'w') as f:
+                    f.write(fixed)
+                print(f"✅ Saved repaired YAML to {fixed_path}")
+            else:
+                print(f"✅ {path} already has task block.")
+
+        for file in os.listdir('tasks'):
+            if file.endswith('.yaml') and not file.endswith('_fixed.yaml'):
+                auto_repair_yaml(os.path.join('tasks', file))
+

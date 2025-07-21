@@ -1,0 +1,21 @@
+task: "Verify Screenshot Output With GPT"
+
+vars:
+  screenshot_path: "./screenshots/output.png"
+
+steps:
+  - name: Take screenshot of result
+    run: python scripts/utils/take_screenshot.py --output ${screenshot_path}
+
+  - name: Ask GPT to confirm visual output is ✅
+    ask_gpt:
+      prompt: |
+        This screenshot shows the current result of running the task.
+        ✅ if it matches the expected UI or behavior.
+        ❌ if it is wrong or broken. Explain why.
+      image: ${screenshot_path}
+    save_response_as: visual_verdict
+
+  - name: Output verdict
+    run: echo "GPT visual verdict: ${visual_verdict}"
+
